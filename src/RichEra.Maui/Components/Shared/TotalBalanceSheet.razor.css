@@ -1,0 +1,66 @@
+/* Bottom sheet — same sb-* vocabulary as the Accounts sheets so the two flows
+   feel identical. Tiles and icon sizing come from theme.css globals. */
+.sb-overlay {
+    position: fixed; inset: 0; z-index: 80;
+    background: rgba(7, 10, 14, 0.55);
+    display: flex; align-items: flex-end; justify-content: center; padding: 16px;
+}
+.sb-sheet {
+    background: var(--surface-solid); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px 18px 20px;
+    width: 100%; max-width: 480px; box-shadow: var(--shadow);
+}
+.grip { width: 38px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 16px; }
+.sb-title { font-size: 17px; font-weight: 750; margin: 0 0 2px; color: var(--text); }
+.sb-sub { font-size: 13px; color: var(--text-muted); margin: 0 0 16px; }
+.hint { color: var(--text-muted); font-size: 12px; line-height: 1.45; margin: 6px 2px 0; }
+.qb-hint { margin: -6px 2px 14px; }
+.hint b { color: var(--text); font-weight: 650; }
+
+/* Per-account quick-reconcile rows */
+.qb-list {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 14px;
+}
+.qb-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-bottom: 1px solid var(--border); }
+.qb-row:last-child { border-bottom: none; }
+.qb-mid { flex: 1; min-width: 0; }
+.qb-name { font-size: 14px; font-weight: 650; color: var(--text); }
+.qb-type { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+.qb-amt { text-align: right; flex: 0 0 auto; }
+.qb-amt input {
+    width: 122px; text-align: right;
+    background: var(--field-bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 9px 10px; font-size: 15px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.qb-amt input:focus { outline: none; border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+.qb-delta { font-size: 11px; font-weight: 700; margin-top: 4px; min-height: 13px; }
+.qb-delta.inc { color: var(--accent-ink); }
+.qb-delta.exp { color: var(--rose-ink); }
+
+/* current → new → adjustment readout */
+.sb-recon { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 0; margin-bottom: 14px; }
+.sb-recon .line { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; font-size: 14px; }
+.sb-recon .line + .line { border-top: 1px solid var(--border); }
+.sb-recon .k { color: var(--text-muted); }
+.sb-recon .v { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.sb-recon .v.inc { color: var(--accent-ink); }
+.sb-recon .v.exp { color: var(--rose-ink); }
+.sb-recon .v.zero { color: var(--text-muted); }
+
+/* record-as-transaction toggle */
+.sb-opt { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 12px; cursor: pointer; user-select: none; }
+.sb-opt .txt { flex: 1; }
+.sb-opt .txt .t { font-size: 14px; font-weight: 600; color: var(--text); }
+.sb-opt .txt .d { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+.switch { width: 44px; height: 26px; border-radius: 999px; background: var(--accent); position: relative; flex-shrink: 0; transition: background 0.15s; }
+.switch::after { content: ""; position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left 0.15s, right 0.15s; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); }
+.switch.off { background: var(--border-strong); }
+.switch.off::after { right: auto; left: 3px; }
+
+.sb-actions { display: flex; gap: 10px; margin-top: 18px; }
+.sb-actions button { flex: 1; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); }
+.sb-actions .save { background: var(--grad); color: #06281f; border-color: transparent; box-shadow: 0 10px 22px -10px var(--grad-shadow); }
+.sb-actions .save:disabled { opacity: 0.5; cursor: default; }
+.sb-actions .cancel { background: var(--surface-2); color: var(--text); }

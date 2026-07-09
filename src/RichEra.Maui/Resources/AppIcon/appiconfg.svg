@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="456" height="456" viewBox="0 0 456 456" version="1.1" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+        <radialGradient id="coin" cx="0.4" cy="0.3" r="0.9">
+            <stop offset="0" stop-color="#FBE08C" />
+            <stop offset="0.6" stop-color="#F5C451" />
+            <stop offset="1" stop-color="#D89B26" />
+        </radialGradient>
+    </defs>
+    <g fill="url(#coin)" stroke="#B97F1E" stroke-width="2.5">
+        <ellipse cx="145" cy="318" rx="38" ry="11" />
+        <ellipse cx="145" cy="292" rx="38" ry="11" />
+        <ellipse cx="228" cy="318" rx="38" ry="11" />
+        <ellipse cx="228" cy="292" rx="38" ry="11" />
+        <ellipse cx="228" cy="266" rx="38" ry="11" />
+        <ellipse cx="228" cy="240" rx="38" ry="11" />
+        <ellipse cx="311" cy="318" rx="38" ry="11" />
+        <ellipse cx="311" cy="292" rx="38" ry="11" />
+        <ellipse cx="311" cy="266" rx="38" ry="11" />
+        <ellipse cx="311" cy="240" rx="38" ry="11" />
+        <ellipse cx="311" cy="214" rx="38" ry="11" />
+        <ellipse cx="311" cy="188" rx="38" ry="11" />
+    </g>
+    <g fill="none" stroke="#34D399" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M283 162 L311 134 L339 162" />
+        <path d="M311 134 L311 170" />
+    </g>
+</svg>

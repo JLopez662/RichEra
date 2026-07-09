@@ -1,0 +1,309 @@
+@page "/"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject ICashFlowService CashFlow
+@inject IAccountService AccountSvc
+@inject IItemService ItemSvc
+@inject IIncomeProjectionService Projection
+@inject ISavingsService SavingsSvc
+@inject NavigationManager Nav
+
+<PageTitle>Rich Era</PageTitle>
+
+<div class="pg-head">
+    <div class="wordmark">Rich <b>Era</b></div>
+    <div class="head-actions">
+        <ThemeToggle />
+    </div>
+</div>
+
+@if (_summary is null)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else
+{
+    <div class="hero">
+        @if (_accounts.Count > 0)
+        {
+            <button class="hero-edit" title="Update balance" aria-label="Update balance"
+                    @onclick="() => _showBalanceSheet = true">
+                <Icon Name="pencil" Size="15" />
+            </button>
+        }
+        <div class="hero-label">Total balance</div>
+        <div class="hero-balance">@_summary.TotalAccountBalance.ToString("C")</div>
+        <div class="hero-sub">
+            <Icon Name="@(_summary.Net >= 0 ? "arrow-up" : "arrow-down")" />
+            @(_summary.Net >= 0 ? "+" : "")@_summary.Net.ToString("C") this month
+        </div>
+    </div>
+
+    <div class="eyebrow">
+        <span>This month</span>
+        <span class="eyebrow__link">@_monthLabel</span>
+    </div>
+
+    <div class="month-grid">
+        <div class="stat">
+            <div class="stat-k"><span class="pip inc"></span> Income</div>
+            <div class="stat-v inc">@_summary.Income.ToString("C")</div>
+        </div>
+        <div class="stat">
+            <div class="stat-k"><span class="pip exp"></span> Expenses</div>
+            <div class="stat-v">@_summary.Expenses.ToString("C")</div>
+        </div>
+
+        <div class="net">
+            <div class="net-top">
+                <span class="net-k">Net</span>
+                <span class="net-v @(_summary.Net >= 0 ? "pos" : "neg")">@(_summary.Net >= 0 ? "+" : "")@_summary.Net.ToString("C")</span>
+            </div>
+            <div class="flow">
+                <div class="flow-in" style="width:@_keptPct%"></div>
+                <div class="flow-out" style="width:@_spentPct%"></div>
+            </div>
+            <div class="flow-meta">
+                <span>@_keptPct% kept</span>
+                <span>@_spentPct% spent</span>
+            </div>
+        </div>
+    </div>
+
+    @if (_runway is { HasIncome: true } rw)
+    {
+        <div class="eyebrow">
+            <span>Runway to payday</span>
+            <span class="eyebrow__link" @onclick='() => Nav.NavigateTo("runway")'>Details ›</span>
+        </div>
+        <div class="runway-card" @onclick='() => Nav.NavigateTo("runway")'>
+            <div class="rw-top">
+                <div class="rw-sub">@rw.DaysToIncome day@(rw.DaysToIncome == 1 ? "" : "s") · @rw.Expenses.Count expense@(rw.Expenses.Count == 1 ? "" : "s") · −@rw.TotalExpenses.ToString("C")</div>
+                <Icon Name="chevron-right" Size="16" />
+            </div>
+            <div class="rw-track">
+                <span class="rw-tick start" style="left:0%"></span>
+                @foreach (var e in rw.Expenses)
+                {
+                    <span class="rw-tick" style="left:@(Pct(e.Date))%"></span>
+                }
+                <span class="rw-tick pay" style="left:100%"></span>
+            </div>
+            <div class="rw-foot">
+                <span>Today</span>
+                <span class="rw-pay">@rw.NextIncomeName · +@rw.NextIncomeAmount.ToString("C")</span>
+            </div>
+            @if (rw.GoesNegative)
+            {
+                <div class="rw-warn"><Icon Name="alert-triangle" Size="13" /> Dips to @rw.LowestBalance.ToString("C") before payday</div>
+            }
+        </div>
+    }
+
+    @if (_savings is { HasGoal: true } sv)
+    {
+        <div class="eyebrow">
+            <span>Savings goal</span>
+            <span class="eyebrow__link" @onclick='() => Nav.NavigateTo("savings")'>Details ›</span>
+        </div>
+        <div class="savings-card" @onclick='() => Nav.NavigateTo("savings")'>
+            <div class="sv-top">
+                <div class="sv-name"><Icon Name="piggy-bank" Size="16" /> @sv.Goal!.Name</div>
+                <div class="sv-pct">@(sv.PercentComplete)%</div>
+            </div>
+            <div class="sv-bar"><div class="f" style="width:@(sv.PercentComplete)%"></div></div>
+            <div class="sv-foot">
+                <span>@sv.SavedSoFar.ToString("C") of @sv.Goal.TargetAmount.ToString("C")</span>
+                @if (sv.ProjectedCompletion is DateOnly d)
+                {
+                    <span class="sv-when">@d.ToString("MMM yyyy")</span>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_nextPay is not null)
+    {
+        <div class="eyebrow"><span>Next paycheck</span></div>
+        <div class="paycheck">
+            <div class="paycheck-row">
+                <div class="tile tile--green"><Icon Name="briefcase" /></div>
+                <div class="paycheck-body">
+                    <div class="paycheck-t1">@_nextPay.Name</div>
+                    <div class="paycheck-t2"><Icon Name="repeat" /> @_nextPay.Freq · @_nextPay.When</div>
+                </div>
+                <div class="paycheck-right">
+                    <div class="paycheck-amt">@_nextPay.Pay.ProjectedAmount.ToString("C")</div>
+                    <div class="paycheck-when">@_nextPay.Pay.Date.ToString("ddd, MMM d")</div>
+                </div>
+            </div>
+            <div class="paycheck-bar">
+                <div class="paycheck-bar-fill" style="width:@_nextPay.ProgressPct%"></div>
+            </div>
+        </div>
+    }
+
+    @if (_nextExpense is not null)
+    {
+        <div class="eyebrow"><span>Next recurring expense</span></div>
+        <div class="paycheck expense">
+            <div class="paycheck-row">
+                <div class="tile tile--rose"><Icon Name="receipt" /></div>
+                <div class="paycheck-body">
+                    <div class="paycheck-t1">@_nextExpense.Name</div>
+                    <div class="paycheck-t2"><Icon Name="repeat" /> @_nextExpense.Freq · @_nextExpense.When</div>
+                </div>
+                <div class="paycheck-right">
+                    <div class="paycheck-amt">−@_nextExpense.Pay.ProjectedAmount.ToString("C")</div>
+                    <div class="paycheck-when">@_nextExpense.Pay.Date.ToString("ddd, MMM d")</div>
+                </div>
+            </div>
+            <div class="paycheck-bar">
+                <div class="paycheck-bar-fill" style="width:@_nextExpense.ProgressPct%"></div>
+            </div>
+        </div>
+    }
+
+    <div class="eyebrow">
+        <span>Accounts</span>
+        <span class="eyebrow__link" @onclick='() => Nav.NavigateTo("accounts")'>Manage ›</span>
+    </div>
+
+    @if (_accounts.Count == 0)
+    {
+        <p class="loading">No accounts yet. Add one from the Accounts page to get started.</p>
+    }
+    else
+    {
+        <div class="acct">
+            @foreach (var a in _accounts)
+            {
+                <div class="acct-row" @onclick='() => Nav.NavigateTo("accounts")'>
+                    <div class="tile @AccountUi.TileClass(a.Type)"><Icon Name="@AccountUi.IconName(a.Type)" /></div>
+                    <div class="acct-name">@a.Name <span class="acct-type">@AccountUi.Label(a.Type)</span></div>
+                    <div class="acct-bal @(a.CurrentBalance < 0 ? "neg" : "")">@a.CurrentBalance.ToString("C")</div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (_showBalanceSheet)
+{
+    <TotalBalanceSheet Accounts="_accounts" OnClose="CloseBalanceSheet" OnSaved="BalanceSheetSaved" />
+}
+
+@code {
+    private MonthlySummaryDto? _summary;
+    private IReadOnlyList<AccountDto> _accounts = Array.Empty<AccountDto>();
+    private string _monthLabel = "";
+    private int _keptPct;
+    private int _spentPct;
+
+    private NextCard? _nextPay;
+    private NextCard? _nextExpense;
+    private RunwayDto? _runway;
+    private SavingsPlanDto? _savings;
+    private bool _showBalanceSheet;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        var now = DateTime.Now;
+        _monthLabel = now.ToString("MMMM yyyy");
+        _summary = await CashFlow.GetMonthlySummaryAsync(now.Year, now.Month);
+        _accounts = await AccountSvc.ListAsync();
+
+        ComputeFlow();
+        _nextPay = await LoadNextAsync(TransactionDirection.Income);
+        _nextExpense = await LoadNextAsync(TransactionDirection.Expense);
+        _runway = await Projection.GetRunwayAsync();
+        _savings = await SavingsSvc.GetPlanAsync();
+    }
+
+    private void CloseBalanceSheet() => _showBalanceSheet = false;
+
+    // Balance changes ripple into the hero total, account rows, and runway
+    // projections, so reload everything the page shows.
+    private async Task BalanceSheetSaved()
+    {
+        _showBalanceSheet = false;
+        await LoadAsync();
+    }
+
+    // Horizontal position (0–100%) of a date between today (0) and payday (100) for the runway bar.
+    private int Pct(DateOnly date)
+    {
+        if (_runway is not { HasIncome: true } r || r.DaysToIncome <= 0) return 100;
+        var span = r.NextIncomeDate!.Value.DayNumber - r.Today.DayNumber;
+        var pos = date.DayNumber - r.Today.DayNumber;
+        return (int)Math.Round(Math.Clamp((double)pos / span * 100.0, 0, 100));
+    }
+
+    private void ComputeFlow()
+    {
+        if (_summary is null) return;
+        if (_summary.Income <= 0)
+        {
+            _spentPct = _summary.Expenses > 0 ? 100 : 0;
+            _keptPct = 100 - _spentPct;
+            return;
+        }
+        var spent = (double)(_summary.Expenses / _summary.Income) * 100.0;
+        _spentPct = (int)Math.Round(Math.Clamp(spent, 0, 100));
+        _keptPct = 100 - _spentPct;
+    }
+
+    // Soonest unconfirmed projected occurrence for the given direction, with cycle progress.
+    private async Task<NextCard?> LoadNextAsync(TransactionDirection direction)
+    {
+        var sources = await ItemSvc.ListAsync(direction: direction, scheduledOnly: true);
+        if (sources.Count == 0) return null;
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        var horizon = today.AddDays(60);
+
+        ProjectedPaycheckDto? best = null;
+        ItemDto? bestSrc = null;
+        foreach (var s in sources)
+        {
+            var next = (await Projection.GetPaychecksAsync(s.Id, today, horizon))
+                .Where(p => p.Date >= today && !p.IsReceived)
+                .OrderBy(p => p.Date)
+                .FirstOrDefault();
+            if (next is not null && (best is null || next.Date < best.Date))
+            {
+                best = next;
+                bestSrc = s;
+            }
+        }
+
+        if (best is null || bestSrc is null) return null;
+
+        var days = best.Date.DayNumber - today.DayNumber;
+        var when = days switch
+        {
+            0 => "today",
+            1 => "tomorrow",
+            _ => $"in {days} days",
+        };
+
+        // Fill the bar by how far we are through the current cycle:
+        // empty just after the last occurrence, full on the due date.
+        var cycleDays = bestSrc.Frequency switch
+        {
+            RepeatFrequency.Weekly => 7,
+            RepeatFrequency.Biweekly => 14,
+            RepeatFrequency.Monthly => Math.Max(1, best.Date.DayNumber - best.Date.AddMonths(-1).DayNumber),
+            _ => 14,
+        };
+        var elapsed = cycleDays - days;
+        var progressPct = (int)Math.Round(Math.Clamp((double)elapsed / cycleDays * 100.0, 0, 100));
+
+        return new NextCard(best, bestSrc.Name, bestSrc.Frequency?.ToString() ?? "Repeats", when, progressPct);
+    }
+
+    private record NextCard(ProjectedPaycheckDto Pay, string Name, string Freq, string When, int ProgressPct);
+}

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup 07 — Set current balance</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-2: #161c24;
+    --card: #1a2027;
+    --card-2: #232b35;
+    --text: #e8edf2;
+    --muted: #8b95a3;
+    --accent: #2ecc71;
+    --accent-hover: #5edc8c;
+    --accent-soft: rgba(46,204,113,0.12);
+    --danger: #e74c3c;
+    --danger-soft: rgba(231,76,60,0.14);
+    --border: #2a3340;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 0 18px; }
+  .back { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .caption { color: var(--muted); font-size: 12px; text-align: center; margin: 30px 0 14px; text-transform: uppercase; letter-spacing: 0.08em; }
+  h1 { font-size: 22px; margin: 0 0 14px; }
+
+  /* ===== ACCOUNTS LIST (entry point) ===== */
+  .acct-list { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .acct { display: flex; align-items: center; gap: 12px; padding: 14px; border-bottom: 1px solid var(--border); }
+  .acct:last-child { border-bottom: none; }
+  .acct .ic {
+    width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
+    background: var(--card-2); display: grid; place-items: center; font-size: 19px;
+  }
+  .acct .mid { flex: 1; min-width: 0; }
+  .acct .name { font-size: 15px; font-weight: 600; }
+  .acct .type { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .acct .bal { text-align: right; flex-shrink: 0; }
+  .acct .bal .v { font-size: 16px; font-weight: 700; }
+  .acct .bal .edit {
+    display: inline-flex; align-items: center; gap: 5px; margin-top: 4px;
+    font-size: 11px; color: var(--accent); cursor: pointer;
+  }
+  .acct.target { background: var(--card-2); }
+
+  /* ===== SET-BALANCE SHEET ===== */
+  .sheet {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 18px 18px 20px;
+  }
+  .grip { width: 38px; height: 4px; border-radius: 2px; background: var(--card-2); margin: 0 auto 16px; }
+  .sheet-title { font-size: 17px; font-weight: 700; margin: 0 0 2px; }
+  .sheet-sub { font-size: 13px; color: var(--muted); margin: 0 0 18px; }
+
+  .amount-field { text-align: center; margin-bottom: 16px; }
+  .amount-field .lbl { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .amount-field .val { font-size: 40px; font-weight: 700; letter-spacing: -0.02em; margin-top: 4px; }
+  .amount-field .val .cur { color: var(--muted); font-size: 24px; vertical-align: 6px; margin-right: 2px; }
+  .amount-field .val .caret { display: inline-block; width: 2px; height: 38px; background: var(--accent); vertical-align: -6px; margin-left: 2px; animation: blink 1s step-end infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  /* current → delta readout */
+  .recon { background: var(--card-2); border: 1px solid var(--border); border-radius: 11px; padding: 4px 0; margin-bottom: 16px; }
+  .recon .line { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; font-size: 14px; }
+  .recon .line + .line { border-top: 1px solid var(--border); }
+  .recon .k { color: var(--muted); }
+  .recon .v { font-weight: 600; }
+  .recon .v.inc { color: var(--accent); }
+  .recon .v.exp { color: var(--danger); }
+
+  .field { margin-bottom: 14px; }
+  .field > label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 6px; }
+  .field .control {
+    background: var(--card-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 12px 14px; font-size: 15px; width: 100%;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+
+  /* record-as-transaction toggle */
+  .opt { display: flex; align-items: center; gap: 12px; background: var(--card-2); border: 1px solid var(--border); border-radius: 11px; padding: 12px 14px; margin-bottom: 8px; }
+  .opt .txt { flex: 1; }
+  .opt .txt .t { font-size: 14px; font-weight: 600; }
+  .opt .txt .d { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.4; }
+  .switch { width: 44px; height: 26px; border-radius: 999px; background: var(--accent); position: relative; flex-shrink: 0; cursor: pointer; }
+  .switch::after { content: ""; position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; }
+  .switch.off { background: var(--border); }
+  .switch.off::after { right: auto; left: 3px; }
+  .hint { color: var(--muted); font-size: 12px; line-height: 1.45; margin: 4px 2px 0; }
+
+  .sheet-actions { display: flex; gap: 10px; margin-top: 20px; }
+  .sheet-actions button { flex: 1; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); }
+  .sheet-actions .save { background: var(--accent); color: #06210f; border-color: var(--accent); }
+  .sheet-actions .cancel { background: transparent; color: var(--text); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="index.html">‹ All mockups</a>
+    <span style="color:var(--muted);font-size:13px;">07 · Set balance</span>
+  </div>
+
+  <h1>Accounts</h1>
+
+  <!-- ENTRY POINT: each account shows its current balance with an inline "Set balance" affordance -->
+  <div class="acct-list">
+    <div class="acct target">
+      <div class="ic">🏦</div>
+      <div class="mid">
+        <div class="name">BPPR Check</div>
+        <div class="type">Checking</div>
+      </div>
+      <div class="bal">
+        <div class="v">$2,418.55</div>
+        <div class="edit">✎ Set balance</div>
+      </div>
+    </div>
+    <div class="acct">
+      <div class="ic">💰</div>
+      <div class="mid">
+        <div class="name">Savings</div>
+        <div class="type">Savings</div>
+      </div>
+      <div class="bal">
+        <div class="v">$9,000.00</div>
+        <div class="edit">✎ Set balance</div>
+      </div>
+    </div>
+    <div class="acct">
+      <div class="ic">💵</div>
+      <div class="mid">
+        <div class="name">Cash</div>
+        <div class="type">Cash</div>
+      </div>
+      <div class="bal">
+        <div class="v">$120.00</div>
+        <div class="edit">✎ Set balance</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= SET-BALANCE SHEET ================= -->
+  <div class="caption">↓ Tapping “✎ Set balance” opens this</div>
+
+  <div class="sheet">
+    <div class="grip"></div>
+
+    <div class="sheet-title">Set current balance</div>
+    <div class="sheet-sub">BPPR Check · Checking</div>
+
+    <div class="amount-field">
+      <div class="lbl">New balance</div>
+      <div class="val"><span class="cur">$</span>2,463.55<span class="caret"></span></div>
+    </div>
+
+    <!-- Reconcile readout: what's stored now, and the difference your entry makes -->
+    <div class="recon">
+      <div class="line">
+        <span class="k">Current balance</span>
+        <span class="v">$2,418.55</span>
+      </div>
+      <div class="line">
+        <span class="k">Adjustment</span>
+        <span class="v inc">+$45.00</span>
+      </div>
+    </div>
+
+    <!-- Optional: write the difference as a transaction so the change is auditable -->
+    <div class="opt">
+      <div class="txt">
+        <div class="t">Record adjustment as a transaction</div>
+        <div class="d">Adds a +$45.00 “Balance adjustment” entry on today’s date, so your history still adds up.</div>
+      </div>
+      <div class="switch"></div>
+    </div>
+    <p class="hint">Turn this off to just overwrite the stored balance without leaving a trace in your transactions.</p>
+
+    <div class="field" style="margin-top:14px;">
+      <label>Note (optional)</label>
+      <div class="control" style="color:var(--muted)">Reconciled with bank app</div>
+    </div>
+
+    <div class="sheet-actions">
+      <button class="cancel">Cancel</button>
+      <button class="save">Save balance</button>
+    </div>
+  </div>
+
+  <!-- Variant note: when the new balance is LOWER than current, the adjustment shows red -->
+  <div class="caption">When the new balance is lower, the adjustment turns red</div>
+
+  <div class="sheet">
+    <div class="grip"></div>
+
+    <div class="sheet-title">Set current balance</div>
+    <div class="sheet-sub">Cash · Cash</div>
+
+    <div class="amount-field">
+      <div class="lbl">New balance</div>
+      <div class="val"><span class="cur">$</span>92.00<span class="caret"></span></div>
+    </div>
+
+    <div class="recon">
+      <div class="line">
+        <span class="k">Current balance</span>
+        <span class="v">$120.00</span>
+      </div>
+      <div class="line">
+        <span class="k">Adjustment</span>
+        <span class="v exp">−$28.00</span>
+      </div>
+    </div>
+
+    <div class="opt">
+      <div class="txt">
+        <div class="t">Record adjustment as a transaction</div>
+        <div class="d">Adds a −$28.00 “Balance adjustment” expense on today’s date.</div>
+      </div>
+      <div class="switch off"></div>
+    </div>
+    <p class="hint">Off — the stored balance is overwritten silently. No transaction is created.</p>
+
+    <div class="sheet-actions">
+      <button class="cancel">Cancel</button>
+      <button class="save">Save balance</button>
+    </div>
+  </div>
+</body>
+</html>

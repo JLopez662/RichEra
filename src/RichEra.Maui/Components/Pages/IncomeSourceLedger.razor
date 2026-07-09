@@ -1,0 +1,165 @@
+@page "/income/{Id:guid}/ledger"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@using RichEra.Maui.Components.Shared
+@inject IItemService ItemSvc
+@inject IIncomeProjectionService Projection
+
+<PageTitle>@(_source?.Name ?? "Recurring") — Ledger</PageTitle>
+
+<IncomeHeader Source="_source" ActiveTab="ledger" />
+
+@if (_source is null)
+{
+    <p class="muted-line"><em>Loading…</em></p>
+}
+else if (_byMonth.Count == 0)
+{
+    <p class="muted-line">No occurrences in this window.</p>
+}
+else
+{
+    <div class="stat-row">
+        <div class="stat-card">
+            <div class="stat-k">@ReceivedYtdLabel</div>
+            <div class="stat-v @AmtTextClass">@_receivedYtd.ToString("C")</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-k">@NextLabel</div>
+            <div class="stat-v">@(_nextPaycheck?.ToString("MMM d") ?? "—")</div>
+        </div>
+    </div>
+
+    <div class="sort-row">
+        <button class="sort-btn" @onclick="ToggleSort">
+            @(_descending ? "↓ Newest first" : "↑ Oldest first")
+        </button>
+    </div>
+
+    @foreach (var group in SortedMonths)
+    {
+        var monthDate = new DateOnly(group.Key.Year, group.Key.Month, 1);
+        var monthLabel = monthDate.ToString("MMMM yyyy");
+        var hasActuals = group.Value.Any(p => p.IsReceived);
+        var allReceived = group.Value.All(p => p.IsReceived);
+        var monthTotal = allReceived
+            ? group.Value.Sum(p => p.ActualAmount ?? 0m)
+            : group.Value.Sum(p => p.IsReceived ? (p.ActualAmount ?? 0m) : p.ProjectedAmount);
+        var threePay = group.Value.Count >= 3;
+
+        <div class="month-card">
+            <div class="month-head">
+                <span class="month-label">
+                    @monthLabel
+                    @if (!hasActuals) { <span class="proj-tag">projected</span> }
+                    @if (threePay) { <span class="badge-3">@ThreeLabel</span> }
+                </span>
+                <span class="month-total @(allReceived ? AmtTextClass : "muted")">@Sign@monthTotal.ToString("C")</span>
+            </div>
+            <div class="occ-list">
+                @foreach (var p in group.Value)
+                {
+                    <div class="occ">
+                        <span class="occ-dot @(p.IsReceived ? (IsExpense ? "rec-exp" : "rec-inc") : "proj")"></span>
+                        <div class="occ-when">
+                            <div class="occ-date"><span class="dow">@p.Date.DayOfWeek.ToString().Substring(0, 3)</span> @p.Date.ToString("MMM d")</div>
+                            <div class="occ-status">@(p.IsReceived ? ReceivedWord : "Projected")</div>
+                        </div>
+                        <div class="occ-right">
+                            @if (p.IsReceived)
+                            {
+                                <div class="occ-amt @AmtTextClass">@Sign@(p.ActualAmount!.Value.ToString("C"))</div>
+                            }
+                            else if (_confirmTarget == p.Date)
+                            {
+                                <div class="confirm">
+                                    <input type="number" step="0.01" class="confirm-input" @bind="_confirmAmount" />
+                                    <button class="confirm-ok" @onclick="@(() => DoConfirm(p.Date))" aria-label="Confirm"><Icon Name="chevron-right" Size="16" /></button>
+                                    <button class="confirm-x" @onclick="@(() => _confirmTarget = null)" aria-label="Cancel">×</button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="occ-amt muted">@Sign@p.ProjectedAmount.ToString("C")</div>
+                                <div class="occ-acts">
+                                    <button class="confirm-link" @onclick="@(() => StartConfirm(p))">Confirm</button>
+                                    <button class="confirm-link alt" @onclick="PaidToday">Paid today</button>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ItemDto? _source;
+    private List<ProjectedPaycheckDto> _all = new();
+    private Dictionary<(int Year, int Month), List<ProjectedPaycheckDto>> _byMonth = new();
+    private decimal _receivedYtd;
+    private DateOnly? _nextPaycheck;
+    private DateOnly? _confirmTarget;
+    private decimal _confirmAmount;
+    private bool _descending = true;
+
+    private bool IsExpense => _source?.Direction == TransactionDirection.Expense;
+    private string Sign => IsExpense ? "−" : "+";
+    private string AmtTextClass => IsExpense ? "amt-exp" : "amt-inc";
+    private string ReceivedWord => IsExpense ? "Paid" : "Received";
+    private string NextLabel => IsExpense ? "Next charge" : "Next paycheck";
+    private string ReceivedYtdLabel => IsExpense ? "Paid YTD" : "Received YTD";
+    private string ThreeLabel => IsExpense ? "3 charges" : "3 paychecks";
+
+    private IEnumerable<KeyValuePair<(int Year, int Month), List<ProjectedPaycheckDto>>> SortedMonths =>
+        _descending
+            ? _byMonth.OrderByDescending(kv => kv.Key.Year).ThenByDescending(kv => kv.Key.Month)
+            : _byMonth.OrderBy(kv => kv.Key.Year).ThenBy(kv => kv.Key.Month);
+
+    private void ToggleSort() => _descending = !_descending;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _source = await ItemSvc.GetAsync(Id);
+        // Unscheduled items have no occurrences to ledger.
+        if (_source is null || _source.StartDate is not DateOnly from) return;
+
+        var to = new DateOnly(DateTime.Today.Year + 1, 12, 31);
+        _all = (await Projection.GetPaychecksAsync(Id, from, to)).ToList();
+
+        _byMonth = _all
+            .GroupBy(p => (p.Date.Year, p.Date.Month))
+            .ToDictionary(g => g.Key, g => g.OrderBy(p => p.Date).ToList());
+
+        var thisYear = DateTime.Today.Year;
+        _receivedYtd = _all.Where(p => p.IsReceived && p.Date.Year == thisYear).Sum(p => p.ActualAmount ?? 0m);
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        _nextPaycheck = _all.Where(p => !p.IsReceived && p.Date >= today).Select(p => (DateOnly?)p.Date).FirstOrDefault();
+    }
+
+    private void StartConfirm(ProjectedPaycheckDto p)
+    {
+        _confirmTarget = p.Date;
+        _confirmAmount = p.ProjectedAmount;
+    }
+
+    private async Task DoConfirm(DateOnly date)
+    {
+        await Projection.ConfirmPaycheckAsync(Id, date, _confirmAmount);
+        _confirmTarget = null;
+        await OnParametersSetAsync();
+    }
+
+    // Quick "paid today": records today's payment at the rule's amount and re-anchors the
+    // recurrence to today (next occurrence counts from now).
+    private async Task PaidToday()
+    {
+        await Projection.MarkPaidTodayAsync(Id);
+        _confirmTarget = null;
+        await OnParametersSetAsync();
+    }
+}

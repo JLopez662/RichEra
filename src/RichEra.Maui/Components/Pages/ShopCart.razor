@@ -1,0 +1,135 @@
+@page "/shop/cart"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Maui.Services
+@inject ShopCartState Cart
+@inject IIncomeProjectionService Projection
+@inject ITransactionService Txns
+@inject ISavingsService SavingsSvc
+@inject NavigationManager Nav
+
+<PageTitle>@(ShowReceipt ? "Order placed" : "Cart")</PageTitle>
+
+@if (Cart.Count > 0)
+{
+    <div class="shop-bar"><span class="bartitle">Your cart (@Cart.Count)</span></div>
+    <div class="rcard">
+        @foreach (var l in Cart.Lines.ToList())
+        {
+            <div class="crow">
+                <div class="cm"><div class="cn">@l.Title</div><div class="cs">@LineSub(l)</div></div>
+                <div class="ca">@l.Amount.ToString("C")</div>
+                <button class="cx" @onclick="() => Remove(l)" aria-label="Remove">×</button>
+            </div>
+        }
+        <div class="rtot"><span>Subtotal (@Cart.Count)</span><span>@Cart.Total.ToString("C")</span></div>
+    </div>
+    <p class="hint">Placing the order is a simulation — no money moves. You'll confirm real payments on the receipt.</p>
+    <button class="bigbuy" @onclick="PlaceOrder">Place order · @Cart.Total.ToString("C")</button>
+}
+else if (ShowReceipt)
+{
+    <div class="success">
+        <div class="checkc"><Icon Name="check" /></div>
+        <div class="s-title">Order placed!</div>
+        <div class="s-sub">Pay each on its biller, then tap “Payment made” to log it here.</div>
+        <div class="s-ord">Order #@Cart.OrderNumber</div>
+    </div>
+
+    @if (_err is not null)
+    {
+        <p class="err">@_err</p>
+    }
+
+    <div class="rcard">
+        @foreach (var l in Cart.LastOrder)
+        {
+            <div class="rrow">
+                <div class="rl">
+                    <div class="rn">@l.Title</div>
+                    <div class="rs">@l.Amount.ToString("C") · @LineSub(l)</div>
+                </div>
+                @if (l.PaymentMade)
+                {
+                    <span class="done"><Icon Name="check" Size="14" /> Logged</span>
+                }
+                else
+                {
+                    <button class="paid" disabled="@_busy" @onclick="() => PaymentMade(l)">Payment made</button>
+                }
+            </div>
+        }
+        <div class="rtot"><span>Total</span><span>@Cart.LastOrder.Sum(l => l.Amount).ToString("C")</span></div>
+    </div>
+
+    <button class="bigbuy" @onclick='() => Nav.NavigateTo("/shop")'>Continue shopping</button>
+    <button class="bigbuy alt" @onclick="Dismiss">@(AllLogged ? "Done" : "Dismiss receipt")</button>
+}
+else
+{
+    <div class="shop-bar"><span class="bartitle">Your cart</span></div>
+    <p class="empty">Your cart's empty. <a href="/shop">Browse the shop →</a></p>
+}
+
+@code {
+    private bool _busy;
+    private string? _err;
+
+    private bool ShowReceipt => Cart.HasOpenReceipt;
+    private bool AllLogged => Cart.LastOrder.Count > 0 && Cart.LastOrder.All(l => l.PaymentMade);
+
+    private void PlaceOrder()
+    {
+        _err = null;
+        Cart.PlaceOrder();
+    }
+
+    private void Remove(ShopCartLine l) => Cart.Remove(l.Kind, l.Id);
+
+    private void Dismiss() => Cart.ClearReceipt();
+
+    private async Task PaymentMade(ShopCartLine l)
+    {
+        if (_busy || l.PaymentMade) return;
+        _busy = true;
+        _err = null;
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        try
+        {
+            switch (l.Kind)
+            {
+                case ShopItemKind.Expense:
+                    // Log the bill for real and advance its recurrence to today.
+                    await Projection.MarkPaidTodayAsync(l.Id, l.Amount);
+                    break;
+
+                case ShopItemKind.Card:
+                    // Pay down the card: a transfer from the funding account into the card account
+                    // (the card's Income leg moves its negative balance toward zero).
+                    if (l.FromAccountId is not Guid cardFrom)
+                        throw new InvalidOperationException("No funding account was set for this payment.");
+                    await Txns.CreateTransferAsync(new TransferUpsertDto(today, cardFrom, l.Id, l.Amount, $"Payment to {l.Title} (PayDay)"));
+                    break;
+
+                case ShopItemKind.Savings:
+                    // Deposit toward the goal (move-mode transfers; track-only bumps the tally).
+                    await SavingsSvc.PostDepositAsync(l.Id, l.Amount, today, l.FromAccountId);
+                    break;
+            }
+            l.PaymentMade = true;
+        }
+        catch (Exception ex)
+        {
+            // e.g. the item was deleted after the order was placed — don't crash the receipt.
+            _err = $"Couldn't log “{l.Title}”: {ex.Message}";
+        }
+        finally { _busy = false; }
+    }
+
+    private static string LineSub(ShopCartLine l) => l.Kind switch
+    {
+        ShopItemKind.Card => l.FromName is null ? "credit card" : $"credit card · from {l.FromName}",
+        ShopItemKind.Savings => l.FromName is null ? "savings deposit" : $"savings deposit · from {l.FromName}",
+        _ => "recurring",
+    };
+}

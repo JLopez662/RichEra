@@ -1,0 +1,822 @@
+@page "/transactions"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject ITransactionService TxnSvc
+@inject IAccountService AccountSvc
+@inject ICategoryService CategorySvc
+@inject IItemService ItemSvc
+@inject NavigationManager Nav
+
+<PageTitle>Transactions</PageTitle>
+
+<div class="pg-head">
+    <h1 class="pg-title">Activity</h1>
+    <div class="head-actions">
+        <ThemeToggle />
+    </div>
+</div>
+
+<div class="search">
+    <span class="search-ic"><Icon Name="search" Size="16" /></span>
+    <input class="search-input" type="text" placeholder="Search all transactions…"
+           value="@_search" @oninput="OnSearchInput" />
+    @if (IsSearching)
+    {
+        <button class="search-clear" @onclick="ClearSearch" aria-label="Clear search"><Icon Name="x" Size="16" /></button>
+    }
+</div>
+
+@if (!IsSearching)
+{
+    <div class="month-nav">
+        <button class="step" @onclick="() => ShiftMonth(-1)" aria-label="Previous month"><Icon Name="chevron-left" /></button>
+        <button class="label" @onclick="OpenMonthPicker">@MonthLabel <Icon Name="chevron-down" Size="15" /></button>
+        <button class="step" @onclick="() => ShiftMonth(1)" aria-label="Next month"><Icon Name="chevron-right" /></button>
+    </div>
+}
+else
+{
+    <div class="search-meta">
+        @_transactions.Count result@(_transactions.Count == 1 ? "" : "s") for “<b>@_search.Trim()</b>”@(_transactions.Count >= SearchCap ? $" · showing first {SearchCap}" : "")
+    </div>
+}
+
+<div class="summary">
+    <div class="chip"><div class="k">Spent</div><div class="v exp">@Spent.ToString("C")</div></div>
+    <div class="chip"><div class="k">Income</div><div class="v inc">@Income.ToString("C")</div></div>
+    <div class="chip"><div class="k">Net</div><div class="v @(NetTotal >= 0 ? "inc" : "exp")">@SignedMoney(NetTotal)</div></div>
+</div>
+
+@if (_accounts.Count == 0)
+{
+    <div class="alert alert-secondary">Add an account first to start tracking transactions. Tap ＋ below.</div>
+}
+
+@if (_editing is not null)
+{
+    <div class="sheet">
+        <div class="grip"></div>
+
+        <div class="seg">
+            <button class="@(_editing.Direction == TransactionDirection.Expense ? "active exp" : "")"
+                    @onclick="() => SetDirection(TransactionDirection.Expense)">Expense</button>
+            <button class="@(_editing.Direction == TransactionDirection.Income ? "active inc" : "")"
+                    @onclick="() => SetDirection(TransactionDirection.Income)">Income</button>
+        </div>
+
+        <div class="amount-field @(_editing.Direction == TransactionDirection.Expense ? "exp" : "inc")">
+            <label class="lbl">Amount</label>
+            <div class="amount-row">
+                <span class="cur">$</span>
+                <input type="number" step="0.01" min="0" class="amount-input" @bind="_editing.Amount" />
+            </div>
+        </div>
+
+        <div class="two-col">
+            <div class="field">
+                <label>Date</label>
+                <input type="date" class="form-control" @bind="_editing.Date" />
+            </div>
+            <div class="field">
+                <label>Account</label>
+                <select class="form-select" @bind="_editing.AccountId">
+                    @foreach (var a in _accounts)
+                    {
+                        <option value="@a.Id">@a.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="field">
+            <label>Category</label>
+            @{
+                var cats = CategoriesFor(_editing.Direction).ToList();
+            }
+            @if (cats.Count == 0)
+            {
+                <p class="hint">No @(_editing.Direction == TransactionDirection.Income ? "income" : "expense") categories yet. Add some on the Categories page.</p>
+            }
+            else
+            {
+                <div class="cats">
+                    @foreach (var c in cats)
+                    {
+                        <span class="cat @(_editing.CategoryId == c.Id ? "active" : "")" @onclick="() => SelectCategory(c.Id)">
+                            <Icon Name="@CategoryIconName(c)" /> @c.Name
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="field">
+            <label>Note</label>
+            <input type="text" class="form-control" @bind="_editing.Note" placeholder="Optional" />
+        </div>
+
+        @if (_formError is not null)
+        {
+            <p class="form-error">@_formError</p>
+        }
+
+        <div class="sheet-actions">
+            <button class="cancel" @onclick="CloseSheets">Cancel</button>
+            @if (_editing.Id is not null)
+            {
+                <button class="delete" @onclick="() => Delete(_editing.Id!.Value)">Delete</button>
+            }
+            <button class="save" @onclick="Save">@(_editing.Id is null ? "Save expense" : "Update")</button>
+        </div>
+    </div>
+}
+
+@if (_transferEditing is not null)
+{
+    <div class="sheet">
+        <div class="grip"></div>
+        <h3 class="sheet-title">⇄ New transfer</h3>
+
+        <div class="amount-field">
+            <label class="lbl">Amount</label>
+            <div class="amount-row">
+                <span class="cur">$</span>
+                <input type="number" step="0.01" min="0" class="amount-input" @bind="_transferEditing.Amount" />
+            </div>
+        </div>
+
+        <div class="two-col">
+            <div class="field">
+                <label>From</label>
+                <select class="form-select" @bind="_transferEditing.FromAccountId">
+                    @foreach (var a in _accounts)
+                    {
+                        <option value="@a.Id">@a.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label>To</label>
+                <select class="form-select" @bind="_transferEditing.ToAccountId">
+                    @foreach (var a in _accounts)
+                    {
+                        <option value="@a.Id">@a.Name</option>
+                    }
+                </select>
+            </div>
+        </div>
+
+        <div class="two-col">
+            <div class="field">
+                <label>Date</label>
+                <input type="date" class="form-control" @bind="_transferEditing.Date" />
+            </div>
+            <div class="field">
+                <label>Note</label>
+                <input type="text" class="form-control" @bind="_transferEditing.Note" placeholder="Optional" />
+            </div>
+        </div>
+
+        @if (_formError is not null)
+        {
+            <p class="form-error">@_formError</p>
+        }
+
+        <div class="sheet-actions">
+            <button class="cancel" @onclick="CloseSheets">Cancel</button>
+            <button class="save" @onclick="SaveTransfer">Save transfer</button>
+        </div>
+    </div>
+}
+
+@if (_viewing is not null)
+{
+    var v = _viewing!;
+    var isTransfer = v.TransferGroupId is not null;
+    <div class="detail-backdrop" @onclick="CloseSheets">
+        <div class="detail" @onclick:stopPropagation="true">
+            <div class="detail-bar"><button class="x" @onclick="CloseSheets">×</button></div>
+
+            <div class="hero">
+                <div class="tile @TileClass(v) detail-ic"><Icon Name="@IconNameFor(v)" /></div>
+                <div class="amt @AmtClass(v)">@HeroAmount(v)</div>
+                <div class="kind">@DetailKind(v)</div>
+            </div>
+
+            <div class="details">
+                @if (isTransfer)
+                {
+                    var accts = TransferAccounts(v);
+                    <div class="drow"><span class="dk">From</span><span class="dv">@accts.From</span></div>
+                    <div class="drow"><span class="dk">To</span><span class="dv">@accts.To</span></div>
+                }
+                else
+                {
+                    <div class="drow"><span class="dk">Account</span><span class="dv">@v.AccountName</span></div>
+                }
+                <div class="drow"><span class="dk">Date</span><span class="dv">@v.Date.ToString("dddd, MMM d, yyyy")</span></div>
+                @if (!string.IsNullOrWhiteSpace(v.Note))
+                {
+                    <div class="drow stack">
+                        <span class="dk">@(isTransfer ? "Note" : "Description")</span>
+                        <span class="dv">@v.Note</span>
+                    </div>
+                }
+                @if (!isTransfer)
+                {
+                    <div class="drow">
+                        <span class="dk">Category</span>
+                        @if (v.CategoryName is not null)
+                        {
+                            <span class="dv"><Icon Name="@IconNameFor(v)" /> @v.CategoryName</span>
+                        }
+                        else
+                        {
+                            <span class="dv"><a class="link" @onclick="EditViewing">＋ Categorize</a></span>
+                        }
+                    </div>
+                }
+                @if (!isTransfer)
+                {
+                    <div class="drow">
+                        <span class="dk">Repeat</span>
+                        <span class="dv repeat-val">
+                            <span class="@(IsRecurring || _recurExpanded ? "recur-on" : "muted")">@(IsRecurring || _recurExpanded ? "On" : "One-time")</span>
+                            <span class="toggle @(IsRecurring || _recurExpanded ? "on" : "")" @onclick="ToggleRecur"><span class="knob"></span></span>
+                        </span>
+                    </div>
+                }
+                <div class="drow">
+                    <span class="dk">Source</span>
+                    <span class="dv"><span class="src-badge @SourceBadgeClass(v)">@SourceLabel(v)</span></span>
+                </div>
+                @if (!string.IsNullOrWhiteSpace(v.ExternalId))
+                {
+                    <div class="drow"><span class="dk">Bank ref</span><span class="dv mono">@v.ExternalId</span></div>
+                }
+                <div class="drow"><span class="dk">Added</span><span class="dv muted">@v.CreatedUtc.ToLocalTime().ToString("MMM d, yyyy · h:mm tt")</span></div>
+            </div>
+
+            @if (!isTransfer && IsRecurring)
+            {
+                <div class="recur live">
+                    <div class="rstart" style="margin-top:0;">
+                        <span class="src-badge">🔁 Repeats @FreqLabel(_viewingRule!.Frequency)</span>
+                        <a class="link" @onclick="ViewRule">View rule →</a>
+                    </div>
+                    <p class="rpreview" style="border-top:none; padding-top:8px;">
+                        This transaction is occurrence #1. Future ones show on your calendar &amp; forecast.
+                    </p>
+                    <a class="link danger stop" @onclick="StopRecurring">Stop repeating</a>
+                </div>
+            }
+            else if (!isTransfer && _recurExpanded)
+            {
+                <div class="recur">
+                    <div class="rlabel">How often</div>
+                    <div class="freq-seg">
+                        <button class="@(_recurFreq == RepeatFrequency.Weekly ? "active" : "")" @onclick="() => SetFreq(RepeatFrequency.Weekly)">Weekly</button>
+                        <button class="@(_recurFreq == RepeatFrequency.Biweekly ? "active" : "")" @onclick="() => SetFreq(RepeatFrequency.Biweekly)">Every 2 weeks</button>
+                        <button class="@(_recurFreq == RepeatFrequency.Monthly ? "active" : "")" @onclick="() => SetFreq(RepeatFrequency.Monthly)">Monthly</button>
+                    </div>
+                    <div class="rstart">
+                        <span class="dk">Starts</span>
+                        <span>@v.Date.ToString("ddd, MMM d, yyyy")</span>
+                    </div>
+                    <p class="rpreview">@RecurPreview()</p>
+                    <button class="create" disabled="@_recurBusy" @onclick="CreateRecurring"><Icon Name="check" Size="16" /> Create recurring rule</button>
+                </div>
+            }
+
+            @if (isTransfer)
+            {
+                <p class="detail-hint">Transfers can't be edited. Deleting removes both sides.</p>
+            }
+
+            <div class="detail-actions">
+                <button class="delete" @onclick="() => Delete(v.Id)">@(isTransfer ? "Delete transfer" : "Delete")</button>
+                @if (isTransfer)
+                {
+                    <button @onclick="CloseSheets">Close</button>
+                }
+                else
+                {
+                    <button class="edit" @onclick="EditViewing">Edit</button>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (_showMonthPicker)
+{
+    <div class="detail-backdrop" @onclick="CloseMonthPicker">
+        <div class="picker" @onclick:stopPropagation="true">
+            <div class="picker-head">
+                <span>Jump to month</span>
+                <button class="x" @onclick="CloseMonthPicker" aria-label="Close">×</button>
+            </div>
+            <div class="picker-yr">
+                <button class="step" @onclick="() => _pickerYear--" aria-label="Previous year"><Icon Name="chevron-left" /></button>
+                <span class="yr">@_pickerYear</span>
+                <button class="step" @onclick="() => _pickerYear++" aria-label="Next year"><Icon Name="chevron-right" /></button>
+            </div>
+            <div class="picker-grid">
+                @for (int m = 1; m <= 12; m++)
+                {
+                    var mm = m;
+                    var isActive = _pickerYear == _year && mm == _month;
+                    var hasData = _activeMonths.Contains((_pickerYear, mm));
+                    <button class="pm @(isActive ? "active" : "") @(hasData ? "has" : "")" @onclick="() => JumpToMonth(_pickerYear, mm)">
+                        @MonthAbbrev(mm)
+                        @if (hasData && !isActive)
+                        {
+                            <span class="pdot"></span>
+                        }
+                    </button>
+                }
+            </div>
+            <div class="picker-foot">
+                <span class="legend"><span class="pdot"></span> has activity</span>
+                <button class="today" @onclick="JumpToToday">Today</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_transactions.Count == 0)
+{
+    <p class="empty">@(IsSearching ? $"No transactions match “{_search.Trim()}”." : $"No transactions in {MonthLabel}.")</p>
+}
+else
+{
+    @foreach (var day in _transactions.GroupBy(t => t.Date).OrderByDescending(g => g.Key))
+    {
+        var subtotal = DaySubtotal(day);
+        <div class="day-head">
+            <span class="d">@day.Key.ToString("ddd, MMM d")</span>
+            @if (day.Any(t => t.TransferGroupId is null))
+            {
+                <span class="t @(subtotal >= 0 ? "inc" : "exp")">@SignedMoney(subtotal)</span>
+            }
+        </div>
+        <div class="list">
+            @foreach (var t in day)
+            {
+                <div class="row" @onclick="() => OpenDetail(t)">
+                    <div class="tile @TileClass(t)"><Icon Name="@IconNameFor(t)" /></div>
+                    <div class="mid">
+                        <div class="name">@(t.TransferGroupId is not null ? "Transfer" : (t.CategoryName ?? "Uncategorized"))</div>
+                        <div class="sub">
+                            <span class="acct-tag">@t.AccountName</span>@t.Note
+                        </div>
+                    </div>
+                    <div class="amt @AmtClass(t)">@SignedAmount(t)</div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    // Optional deep-link (e.g. the "View in Transactions" jump after an import). When present,
+    // opens on that month instead of today's; the ‹ › buttons work from there as usual.
+    [SupplyParameterFromQuery] public int? Year { get; set; }
+    [SupplyParameterFromQuery] public int? Month { get; set; }
+    // Deep-link from the tab-bar FAB: "expense" | "income" | "transfer" opens
+    // the matching add sheet on load.
+    [SupplyParameterFromQuery] public string? Add { get; set; }
+
+    private int _year = DateTime.Now.Year;
+    private int _month = DateTime.Now.Month;
+    private string _search = "";
+    private const int SearchCap = 300;
+    private bool IsSearching => !string.IsNullOrWhiteSpace(_search);
+    private bool _showMonthPicker;
+    private int _pickerYear = DateTime.Now.Year;
+    private HashSet<(int Year, int Month)> _activeMonths = new();
+    private IReadOnlyList<TransactionDto> _transactions = Array.Empty<TransactionDto>();
+    private IReadOnlyList<AccountDto> _accounts = Array.Empty<AccountDto>();
+    private IReadOnlyList<CategoryDto> _categories = Array.Empty<CategoryDto>();
+    private EditModel? _editing;
+    private TransferModel? _transferEditing;
+    private TransactionDto? _viewing;   // row whose read-only detail modal is open
+    private ItemDto? _viewingRule;        // the rule, if the viewed row is recurring
+    private bool _recurExpanded;                  // period picker shown (toggled on, not yet created)
+    private bool _recurBusy;
+    private RepeatFrequency _recurFreq = RepeatFrequency.Monthly;
+    private string? _formError;
+
+    // "Recurring" for display means an active (non-archived) rule is linked.
+    private bool IsRecurring => _viewingRule is { IsArchived: false };
+
+    private string MonthLabel => new DateOnly(_year, _month, 1).ToString("MMMM yyyy");
+
+    private decimal Spent => _transactions
+        .Where(t => t.TransferGroupId is null && t.Direction == TransactionDirection.Expense)
+        .Sum(t => t.Amount);
+    private decimal Income => _transactions
+        .Where(t => t.TransferGroupId is null && t.Direction == TransactionDirection.Income)
+        .Sum(t => t.Amount);
+    private decimal NetTotal => Income - Spent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Year is int y && Month is int m && m is >= 1 and <= 12)
+        {
+            _year = y;
+            _month = m;
+        }
+        _accounts = await AccountSvc.ListAsync();
+        _categories = await CategorySvc.ListAsync();
+        await Reload();
+
+        // Honour the tab-bar FAB deep-link (?add=expense|income|transfer).
+        if (!string.IsNullOrWhiteSpace(Add) && _accounts.Count > 0)
+        {
+            switch (Add.Trim().ToLowerInvariant())
+            {
+                case "expense": StartNew(TransactionDirection.Expense); break;
+                case "income": StartNew(TransactionDirection.Income); break;
+                case "transfer": StartTransfer(); break;
+            }
+        }
+    }
+
+    private async Task Reload() =>
+        _transactions = IsSearching
+            ? await TxnSvc.SearchAsync(_search.Trim(), SearchCap)
+            : await TxnSvc.ListAsync(_year, _month);
+
+    private async Task OnSearchInput(ChangeEventArgs e)
+    {
+        _search = e.Value?.ToString() ?? "";
+        CloseSheets();      // a detail/edit sheet for a row that may leave the results shouldn't linger
+        await Reload();
+    }
+
+    private async Task ClearSearch()
+    {
+        _search = "";
+        CloseSheets();
+        await Reload();
+    }
+
+    private async Task ShiftMonth(int delta)
+    {
+        var d = new DateOnly(_year, _month, 1).AddMonths(delta);
+        _year = d.Year;
+        _month = d.Month;
+        CloseSheets();
+        await Reload();
+    }
+
+    // Tapping the month label opens a year-stepped 12-month grid. Active months (those with
+    // transactions) are dotted, so after a big import you can see where the data landed.
+    private async Task OpenMonthPicker()
+    {
+        CloseSheets();
+        _pickerYear = _year;
+        var months = await TxnSvc.GetActiveMonthsAsync();
+        _activeMonths = months.ToHashSet();
+        _showMonthPicker = true;
+    }
+
+    private void CloseMonthPicker() => _showMonthPicker = false;
+
+    private async Task JumpToMonth(int year, int month)
+    {
+        _year = year;
+        _month = month;
+        _showMonthPicker = false;
+        await Reload();
+    }
+
+    private Task JumpToToday() => JumpToMonth(DateTime.Now.Year, DateTime.Now.Month);
+
+    private static string MonthAbbrev(int month) => new DateOnly(2000, month, 1).ToString("MMM");
+
+    private IEnumerable<CategoryDto> CategoriesFor(TransactionDirection dir) =>
+        _categories.Where(c => !c.IsArchived &&
+            c.Kind == (dir == TransactionDirection.Income ? CategoryKind.Income : CategoryKind.Expense));
+
+    private void StartNew(TransactionDirection dir)
+    {
+        if (_accounts.Count == 0) return;
+        CloseSheets();
+        _editing = new EditModel
+        {
+            Date = DateTime.Today,
+            AccountId = _accounts[0].Id,
+            Amount = 0,
+            Direction = dir,
+            CategoryId = null,
+        };
+    }
+
+    // A tap now opens a read-only detail modal first (works for transfers too); editing is a
+    // deliberate second step from there.
+    private async Task OpenDetail(TransactionDto t)
+    {
+        CloseSheets();
+        _viewing = t;
+        // If this row already belongs to a rule, load it so the modal can show "Repeats …".
+        if (t.ItemId is Guid sid)
+            _viewingRule = await ItemSvc.GetAsync(sid);
+    }
+
+    // "Edit" inside the detail modal hands the row off to the existing edit sheet. Transfers
+    // aren't editable, so the modal never offers Edit for them.
+    private void EditViewing()
+    {
+        if (_viewing is not { TransferGroupId: null } t) return;
+        CloseSheets();
+        _editing = new EditModel
+        {
+            Id = t.Id,
+            Date = t.Date.ToDateTime(TimeOnly.MinValue),
+            AccountId = t.AccountId,
+            CategoryId = t.CategoryId,
+            Amount = t.Amount,
+            Direction = t.Direction,
+            Note = t.Note,
+        };
+    }
+
+    private void SetDirection(TransactionDirection dir)
+    {
+        if (_editing is null || _editing.Direction == dir) return;
+        _editing.Direction = dir;
+        _editing.CategoryId = null; // categories are kind-specific
+    }
+
+    private void SelectCategory(Guid id)
+    {
+        if (_editing is null) return;
+        _editing.CategoryId = _editing.CategoryId == id ? null : id;
+    }
+
+    private async Task Save()
+    {
+        if (_editing is null) return;
+        if (_editing.Amount <= 0)
+        {
+            _formError = "Enter an amount greater than 0.";
+            return;
+        }
+        await TxnSvc.UpsertAsync(new TransactionUpsertDto(
+            _editing.Id,
+            DateOnly.FromDateTime(_editing.Date),
+            _editing.AccountId,
+            _editing.CategoryId,
+            _editing.Amount,
+            _editing.Direction,
+            _editing.Note));
+        CloseSheets();
+        await Reload();
+    }
+
+    private void StartTransfer()
+    {
+        if (_accounts.Count < 2) return;
+        CloseSheets();
+        _transferEditing = new TransferModel
+        {
+            Date = DateTime.Today,
+            FromAccountId = _accounts[0].Id,
+            ToAccountId = _accounts[1].Id,
+            Amount = 0,
+        };
+    }
+
+    private async Task SaveTransfer()
+    {
+        if (_transferEditing is null) return;
+        if (_transferEditing.Amount <= 0)
+        {
+            _formError = "Enter an amount greater than 0.";
+            return;
+        }
+        if (_transferEditing.FromAccountId == _transferEditing.ToAccountId)
+        {
+            _formError = "Source and destination must differ.";
+            return;
+        }
+        await TxnSvc.CreateTransferAsync(new TransferUpsertDto(
+            DateOnly.FromDateTime(_transferEditing.Date),
+            _transferEditing.FromAccountId,
+            _transferEditing.ToAccountId,
+            _transferEditing.Amount,
+            _transferEditing.Note));
+        CloseSheets();
+        await Reload();
+    }
+
+    private async Task Delete(Guid id)
+    {
+        await TxnSvc.DeleteAsync(id);
+        CloseSheets();
+        await Reload();
+    }
+
+    private void CloseSheets()
+    {
+        _editing = null;
+        _transferEditing = null;
+        _viewing = null;
+        _viewingRule = null;
+        _recurExpanded = false;
+        _showMonthPicker = false;
+        _formError = null;
+    }
+
+    private decimal DaySubtotal(IEnumerable<TransactionDto> day) =>
+        day.Where(t => t.TransferGroupId is null)
+           .Sum(t => t.Direction == TransactionDirection.Income ? t.Amount : -t.Amount);
+
+    private static string AmtClass(TransactionDto t) =>
+        t.TransferGroupId is not null ? "transfer"
+        : t.Direction == TransactionDirection.Income ? "inc"
+        : "exp";
+
+    private string SignedAmount(TransactionDto t)
+    {
+        var prefix = t.Direction == TransactionDirection.Income ? "+" : "−";
+        return prefix + t.Amount.ToString("C");
+    }
+
+    private static string SignedMoney(decimal v) => (v >= 0 ? "+" : "−") + Math.Abs(v).ToString("C");
+
+    // Detail modal: transfers show an unsigned amount; income/expense keep their +/− sign.
+    private string HeroAmount(TransactionDto t) =>
+        t.TransferGroupId is not null ? t.Amount.ToString("C") : SignedAmount(t);
+
+    private static string DetailKind(TransactionDto t)
+    {
+        if (t.TransferGroupId is not null) return "Transfer";
+        var dir = t.Direction == TransactionDirection.Income ? "Income" : "Expense";
+        return $"{dir} · {t.CategoryName ?? "Uncategorized"}";
+    }
+
+    // Both legs of a transfer share the date, so they're always in the current month's list:
+    // the From account is the expense (out) leg, the To account is the income (in) leg.
+    private (string From, string To) TransferAccounts(TransactionDto t)
+    {
+        var legs = _transactions.Where(x => x.TransferGroupId == t.TransferGroupId).ToList();
+        var from = legs.FirstOrDefault(x => x.Direction == TransactionDirection.Expense)?.AccountName;
+        var to = legs.FirstOrDefault(x => x.Direction == TransactionDirection.Income)?.AccountName;
+        return (from ?? t.AccountName, to ?? "—");
+    }
+
+    private static string SourceLabel(TransactionDto t)
+    {
+        if (t.TransferGroupId is not null) return "⇄ Transfer";
+        if (string.IsNullOrEmpty(t.ImportSource)) return "✎ Added manually";
+        return t.ImportSource.Equals("ofx", StringComparison.OrdinalIgnoreCase)
+            ? "⬇ Imported · OFX"
+            : $"⬇ Imported · {t.ImportSource}";
+    }
+
+    // Accent badge for imported rows; neutral for manual entries and transfers.
+    private static string SourceBadgeClass(TransactionDto t) =>
+        t.TransferGroupId is null && !string.IsNullOrEmpty(t.ImportSource) ? "" : "neutral";
+
+    // ===== Recurrence (detail modal) =====
+
+    private async Task ToggleRecur()
+    {
+        if (IsRecurring) { await StopRecurring(); return; }
+        _recurExpanded = !_recurExpanded;   // reveal/hide the period picker; nothing is written yet
+    }
+
+    private void SetFreq(RepeatFrequency f) => _recurFreq = f;
+
+    private async Task CreateRecurring()
+    {
+        if (_viewing is null || _recurBusy) return;
+        _recurBusy = true;
+        try
+        {
+            var ruleId = await TxnSvc.MakeRecurringAsync(_viewing.Id, _recurFreq);
+            _viewing = _viewing with { ItemId = ruleId };
+            _viewingRule = await ItemSvc.GetAsync(ruleId);
+            _recurExpanded = false;
+            await Reload();
+        }
+        finally { _recurBusy = false; }
+    }
+
+    private async Task StopRecurring()
+    {
+        if (_viewingRule is null || _recurBusy) return;
+        _recurBusy = true;
+        try
+        {
+            await ItemSvc.ArchiveAsync(_viewingRule.Id);  // stops future projections
+            _viewingRule = null;                            // display falls back to "one-time"
+            _recurExpanded = false;
+            await Reload();
+        }
+        finally { _recurBusy = false; }
+    }
+
+    private void ViewRule()
+    {
+        if (_viewingRule is not null) Nav.NavigateTo($"/income/{_viewingRule.Id}/ledger");
+    }
+
+    private static string FreqLabel(RepeatFrequency? f) => f switch
+    {
+        RepeatFrequency.Weekly => "weekly",
+        RepeatFrequency.Biweekly => "every 2 weeks",
+        RepeatFrequency.Monthly => "monthly",
+        _ => "on a schedule",   // null: item exists but repeat was turned off
+    };
+
+    private string RecurPreview()
+    {
+        if (_viewing is null) return "";
+        var start = _viewing.Date;
+        var next = _recurFreq switch
+        {
+            RepeatFrequency.Weekly => start.AddDays(7),
+            RepeatFrequency.Biweekly => start.AddDays(14),
+            _ => start.AddMonths(1),
+        };
+        var label = _viewing.CategoryName ?? (_viewing.Direction == TransactionDirection.Income ? "income" : "expense");
+        return $"Creates a recurring {label} of {_viewing.Amount.ToString("C")}, {FreqLabel(_recurFreq)} from {start.ToString("MMM d")}. Next: {next.ToString("MMM d, yyyy")}.";
+    }
+
+    // Resolve a monoline icon NAME (Icon.razor / Lucide vocabulary) for a row.
+    private string IconNameFor(TransactionDto t)
+    {
+        if (t.TransferGroupId is not null) return "arrow-left-right";
+        var cat = t.CategoryId is Guid cid ? _categories.FirstOrDefault(c => c.Id == cid) : null;
+        if (cat is not null) return CategoryIconName(cat);
+        return FallbackIconName(t.CategoryName, t.Direction);
+    }
+
+    // Category.Icon already stores a Lucide icon NAME (e.g. "briefcase"), which
+    // Icon.razor renders directly; fall back by name when it's blank.
+    private static string CategoryIconName(CategoryDto c)
+    {
+        var icon = (c.Icon ?? "").Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(icon)) return icon;
+        return FallbackIconName(c.Name, c.Kind == CategoryKind.Income ? TransactionDirection.Income : TransactionDirection.Expense);
+    }
+
+    private static string FallbackIconName(string? name, TransactionDirection dir)
+    {
+        var n = (name ?? "").ToLowerInvariant();
+        if (n.Contains("groc")) return "shopping-cart";
+        if (n.Contains("rent") || n.Contains("mortgage") || n.Contains("hous")) return "home";
+        if (n.Contains("din") || n.Contains("restau") || n.Contains("food") || n.Contains("eat")) return "utensils";
+        if (n.Contains("transp") || n.Contains("gas") || n.Contains("fuel") || n.Contains("car") || n.Contains("uber")) return "car";
+        if (n.Contains("util") || n.Contains("electric") || n.Contains("water") || n.Contains("power")) return "zap";
+        if (n.Contains("salary") || n.Contains("payroll") || n.Contains("wage")) return "briefcase";
+        if (n.Contains("health") || n.Contains("medic") || n.Contains("doctor")) return "heart";
+        if (n.Contains("shop") || n.Contains("cloth")) return "shopping-bag";
+        if (n.Contains("subscr") || n.Contains("phone") || n.Contains("internet") || n.Contains("stream")) return "smartphone";
+        if (n.Contains("travel") || n.Contains("flight") || n.Contains("hotel")) return "plane";
+        if (n.Contains("gift")) return "gift";
+        if (n.Contains("save") || n.Contains("invest")) return "piggy-bank";
+        return dir == TransactionDirection.Income ? "banknote" : "receipt";
+    }
+
+    // Accent-tinted tile colour for the row icon — semantic by icon/direction.
+    private string TileClass(TransactionDto t)
+    {
+        if (t.TransferGroupId is not null) return "tile--blue";
+        return IconNameFor(t) switch
+        {
+            "shopping-cart" or "landmark" or "credit-card" or "smartphone" => "tile--blue",
+            "home" => "tile--violet",
+            "zap" or "lightbulb" or "car" or "coffee" or "utensils" or "plane" or "film" => "tile--amber",
+            "heart" or "gift" or "receipt" => "tile--rose",
+            "briefcase" or "trending-up" or "percent" or "banknote" or "piggy-bank" or "repeat" or "shopping-bag" => "tile--green",
+            "more-horizontal" or "folder" => "tile--slate",
+            _ => t.Direction == TransactionDirection.Income ? "tile--green" : "tile--slate",
+        };
+    }
+
+    private class EditModel
+    {
+        public Guid? Id { get; set; }
+        public DateTime Date { get; set; } = DateTime.Today;
+        public Guid AccountId { get; set; }
+        public Guid? CategoryId { get; set; }
+        public decimal Amount { get; set; }
+        public TransactionDirection Direction { get; set; }
+        public string? Note { get; set; }
+    }
+
+    private class TransferModel
+    {
+        public DateTime Date { get; set; } = DateTime.Today;
+        public Guid FromAccountId { get; set; }
+        public Guid ToAccountId { get; set; }
+        public decimal Amount { get; set; }
+        public string? Note { get; set; }
+    }
+}

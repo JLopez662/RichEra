@@ -1,0 +1,130 @@
+@page "/income/{Id:guid}/forecast"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@using RichEra.Maui.Components.Shared
+@inject IItemService ItemSvc
+@inject IIncomeProjectionService Projection
+
+<PageTitle>@(_source?.Name ?? "Recurring") — Forecast</PageTitle>
+
+<IncomeHeader Source="_source" ActiveTab="forecast" />
+
+@if (_source is null || _forecast is null)
+{
+    <p class="muted-line"><em>Loading…</em></p>
+}
+else
+{
+    var pct = _forecast.ProjectedYearTotal > 0
+        ? (double)(_forecast.ReceivedYtd / _forecast.ProjectedYearTotal) * 100.0
+        : 0;
+    pct = Math.Clamp(pct, 0, 100);
+
+    <div class="year-nav">
+        <button class="nav-btn" @onclick="@(() => ChangeYear(-1))" aria-label="Previous year"><Icon Name="chevron-left" Size="18" /></button>
+        <div class="year-label">@_year</div>
+        <button class="nav-btn" @onclick="@(() => ChangeYear(1))" aria-label="Next year"><Icon Name="chevron-right" Size="18" /></button>
+    </div>
+
+    <div class="ytd-card">
+        <div class="ytd-k">Year-to-date · @_year</div>
+        <div class="ytd-v @AmtTextClass">@_forecast.ReceivedYtd.ToString("C")
+            <span class="ytd-of">of @_forecast.ProjectedYearTotal.ToString("C") projected</span>
+        </div>
+        <div class="fc-bar"><div class="fc-bar-fill @(IsExpense ? "exp" : "inc")" style="width:@(pct.ToString("F0"))%"></div></div>
+        <div class="fc-meta">
+            <span>@pct.ToString("F0")% complete</span>
+            <span>@_forecast.PaychecksProjected @(IsExpense ? "charges" : "paychecks") projected</span>
+        </div>
+    </div>
+
+    <div class="eyebrow"><span>Monthly breakdown</span></div>
+    <div class="bd-card">
+        <div class="table-responsive">
+            <table class="table table-sm mb-0">
+                <thead>
+                    <tr>
+                        <th>Month</th>
+                        <th class="text-end">Projected</th>
+                        <th class="text-end">Actual</th>
+                        <th class="text-end">Δ</th>
+                        <th class="text-end">#</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var m in _forecast.Months)
+                    {
+                        var monthLabel = new DateOnly(m.Year, m.Month, 1).ToString("MMM yyyy");
+                        var delta = m.Actual.HasValue ? m.Actual.Value - m.Projected : (decimal?)null;
+                        <tr>
+                            <td>
+                                @monthLabel
+                                @if (m.IsThreePaycheckMonth) { <span class="badge-3 ms-1">@(IsExpense ? "3 chg" : "3 pay")</span> }
+                            </td>
+                            <td class="text-end @(m.Actual.HasValue ? "" : "text-muted")">@m.Projected.ToString("C")</td>
+                            <td class="text-end">@(m.Actual?.ToString("C") ?? "—")</td>
+                            <td class="text-end @DeltaClass(delta, IsExpense)">@DeltaText(delta)</td>
+                            <td class="text-end">@m.PaycheckCount</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    @if (_forecast.ThreePaycheckMonths.Count > 0)
+    {
+        <div class="threepay-note">
+            <div class="tile tile--amber"><Icon Name="zap" /></div>
+            <div>
+                Biweekly schedules produce <b>2 "@(IsExpense ? "three-charge" : "three-paycheck") months" per year</b> —
+                for your start date, <b>@string.Join(" and ", _forecast.ThreePaycheckMonths.Select(d => d.ToString("MMM yyyy")))</b>.
+                @(IsExpense
+                    ? "Budget ahead so the extra charge doesn't sting."
+                    : "Nice months to front-load savings or knock down a debt.")
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ItemDto? _source;
+    private IncomeForecastDto? _forecast;
+    private int _year = DateTime.Today.Year;
+
+    private bool IsExpense => _source?.Direction == TransactionDirection.Expense;
+    private string AmtTextClass => IsExpense ? "amt-exp" : "amt-inc";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _source = await ItemSvc.GetAsync(Id);
+        if (_source is null) return;
+        await Reload();
+    }
+
+    private async Task Reload()
+    {
+        _forecast = await Projection.GetForecastAsync(Id, _year);
+    }
+
+    private async Task ChangeYear(int delta)
+    {
+        _year += delta;
+        await Reload();
+    }
+
+    // For income, receiving more than projected is good (green); for an expense,
+    // paying more than projected is bad (red). So the sign-to-color mapping flips.
+    private static string DeltaClass(decimal? d, bool isExpense) =>
+        d is null || d == 0 ? "text-muted"
+        : (d > 0) ^ isExpense ? "text-success"
+        : "text-danger";
+
+    private static string DeltaText(decimal? d) =>
+        d is null ? "—"
+        : d == 0 ? "$0.00"
+        : (d > 0 ? "+" : "") + d.Value.ToString("C");
+}

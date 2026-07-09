@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup 04 — Forecast dashboard</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #1a2027;
+    --card-2: #232b35;
+    --text: #e8edf2;
+    --muted: #8b95a3;
+    --accent: #2ecc71;
+    --warn: #f39c12;
+    --info: #3498db;
+    --border: #2a3340;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0 20px;
+  }
+  .back { color: var(--muted); text-decoration: none; font-size: 14px; }
+  h1 { margin: 0 0 4px; font-size: 22px; }
+  .rule { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  .progress-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .progress-card .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .progress-card .big {
+    font-size: 26px; font-weight: 600; color: var(--accent);
+    margin-top: 4px;
+  }
+  .progress-card .of { color: var(--muted); font-size: 14px; font-weight: 400; }
+  .bar {
+    height: 10px; border-radius: 5px;
+    background: var(--card-2);
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #5edc8c);
+    width: 12%;
+  }
+  .bar-meta {
+    display: flex; justify-content: space-between;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  .table-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+  .table-card .head {
+    padding: 14px 18px;
+    background: var(--card-2);
+    border-bottom: 1px solid var(--border);
+    font-weight: 600;
+    font-size: 15px;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 10px 14px; font-size: 14px; text-align: right; }
+  th { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+  th:first-child, td:first-child { text-align: left; }
+  tr { border-bottom: 1px solid var(--border); }
+  tr:last-child { border-bottom: none; }
+  td.proj { color: var(--muted); }
+  td.delta-pos { color: var(--accent); }
+  td.delta-neg { color: #e74c3c; }
+  td.delta-zero { color: var(--muted); }
+  .badge {
+    display: inline-block;
+    background: rgba(243,156,18,0.15);
+    color: var(--warn);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+
+  .insight {
+    background: rgba(52,152,219,0.1);
+    border: 1px solid rgba(52,152,219,0.3);
+    border-radius: 12px;
+    padding: 14px 16px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #c0d9ea;
+  }
+  .insight b { color: var(--info); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="index.html">‹ All mockups</a>
+    <span style="color:var(--muted);font-size:13px;">04 · Forecast dashboard</span>
+  </div>
+
+  <h1>💼 Day Job</h1>
+  <div class="rule">Biweekly Friday · base $1,346.17 · started Apr 17, 2026</div>
+
+  <div class="progress-card">
+    <div class="label">Year-to-date · 2026</div>
+    <div class="big">$4,039.50 <span class="of">of $35,000 projected</span></div>
+    <div class="bar"><div class="bar-fill"></div></div>
+    <div class="bar-meta">
+      <span>12% complete</span>
+      <span>26 paychecks projected</span>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="head">Monthly breakdown</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th>Projected</th>
+          <th>Actual</th>
+          <th>Δ</th>
+          <th>#</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Apr 2026</td>
+          <td>$1,346.17</td>
+          <td>$1,346.17</td>
+          <td class="delta-zero">$0.00</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>May 2026</td>
+          <td>$2,692.34</td>
+          <td>$2,693.33</td>
+          <td class="delta-pos">+$0.99</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Jun 2026</td>
+          <td class="proj">$2,692.34</td>
+          <td class="proj">—</td>
+          <td class="proj">—</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Jul 2026</td>
+          <td class="proj">$2,692.34</td>
+          <td class="proj">—</td>
+          <td class="proj">—</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Aug 2026 <span class="badge">3 pay</span></td>
+          <td class="proj">$4,038.51</td>
+          <td class="proj">—</td>
+          <td class="proj">—</td>
+          <td>3</td>
+        </tr>
+        <tr>
+          <td>Sep 2026</td>
+          <td class="proj">$2,692.34</td>
+          <td class="proj">—</td>
+          <td class="proj">—</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Oct 2026</td>
+          <td class="proj">$2,692.34</td>
+          <td class="proj">—</td>
+          <td class="proj">—</td>
+          <td>2</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight">
+    <b>Heads up:</b> biweekly schedules produce <b>2 "three-paycheck months" per year</b>.
+    For your start date, those are <b>Aug 2026</b> and <b>Feb 2027</b> — nice months to
+    front-load savings or knock down a debt.
+  </div>
+</body>
+</html>

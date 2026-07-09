@@ -1,0 +1,312 @@
+@page "/accounts"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject IAccountService AccountSvc
+
+<PageTitle>Accounts</PageTitle>
+
+<div class="pg-head">
+    <h1 class="pg-title">Accounts</h1>
+    <div class="head-actions">
+        <ThemeToggle />
+    </div>
+</div>
+
+@if (_accounts.Count == 0)
+{
+    <p class="empty">No accounts yet — add one to start tracking.</p>
+    <button class="add" @onclick="StartNew"><Icon Name="plus" /> Add account</button>
+}
+else
+{
+    <div class="networth">
+        <div class="k">Total balance</div>
+        <div class="v @(TotalBalance < 0 ? "neg" : "")">@Money(TotalBalance)</div>
+        <div class="meta"><Icon Name="wallet" /> Across @_accounts.Count account@(_accounts.Count == 1 ? "" : "s")</div>
+    </div>
+
+    <button class="add" @onclick="StartNew"><Icon Name="plus" /> Add account</button>
+
+    <div class="cards">
+        @foreach (var a in _accounts)
+        {
+            <div class="acard">
+                <div class="acard-top">
+                    <div class="tile @TypeTileClass(a.Type)"><Icon Name="@TypeIconName(a.Type)" /></div>
+                    <div class="acard-id">
+                        <div class="acard-name">@a.Name</div>
+                        <span class="acard-badge">@TypeLabel(a.Type)</span>
+                    </div>
+                    <div class="acard-balblock">
+                        <div class="acard-bal @(a.CurrentBalance < 0 ? "neg" : "")">@Money(a.CurrentBalance)</div>
+                        <div class="acard-open">opening @a.OpeningBalance.ToString("C")</div>
+                    </div>
+                </div>
+                <div class="acard-btns">
+                    <button class="primary" @onclick="() => StartSetBalance(a)"><Icon Name="sliders" /> Reconcile</button>
+                    <button @onclick="() => StartEdit(a)"><Icon Name="pencil" /> Edit</button>
+                    <button class="ghost-danger" title="Archive account" @onclick="() => StartArchive(a)"><Icon Name="archive" /></button>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@* ===== ARCHIVE CONFIRM SHEET ===== *@
+@if (_archiveTarget is not null)
+{
+    <div class="sb-overlay" @onclick="CloseSheets">
+        <div class="sb-sheet" @onclick:stopPropagation="true">
+            <div class="grip"></div>
+            <div class="sheet-head">
+                <div class="tile @TypeTileClass(_archiveTarget.Type)"><Icon Name="@TypeIconName(_archiveTarget.Type)" /></div>
+                <div>
+                    <div class="name">@_archiveTarget.Name</div>
+                    <div class="type">@TypeLabel(_archiveTarget.Type) · @Money(_archiveTarget.CurrentBalance)</div>
+                </div>
+            </div>
+            <p class="confirm-text">Archive <b>@_archiveTarget.Name</b>? It'll be hidden from your accounts and excluded from your total. Its transactions stay put.</p>
+            <div class="sb-actions">
+                <button class="cancel" @onclick="CloseSheets">Cancel</button>
+                <button class="danger-btn" @onclick="ArchiveAccount">Archive</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ===== ADD / EDIT ACCOUNT SHEET ===== *@
+@if (_editing is not null)
+{
+    <div class="sb-overlay" @onclick="CloseSheets">
+        <div class="sb-sheet" @onclick:stopPropagation="true">
+            <div class="grip"></div>
+            <div class="sb-title">@(_editing.Id is null ? "Add account" : "Edit account")</div>
+            <div class="sb-sub">@(_editing.Id is null ? "A place to track money — checking, savings, cash, a card…" : "Rename or change the account type.")</div>
+
+            <div class="sb-field">
+                <label>Name</label>
+                <input class="form-control" @bind="_editing.Name" placeholder="e.g. BPPR Check" />
+            </div>
+            <div class="sb-field">
+                <label>Type</label>
+                <select class="form-select" @bind="_editing.Type">
+                    @foreach (var t in Enum.GetValues<AccountType>())
+                    {
+                        <option value="@t">@TypeLabel(t)</option>
+                    }
+                </select>
+            </div>
+            <div class="sb-field">
+                <label>Opening balance</label>
+                <input type="number" step="0.01" class="form-control" @bind="_editing.OpeningBalance" />
+                @if (_editing.Id is null)
+                {
+                    <p class="hint">The balance you have right now — it becomes the account's current balance.</p>
+                }
+                else
+                {
+                    <p class="hint">
+                        The balance when you started tracking — not today's balance.
+                        <button type="button" @onclick="SwitchToSetBalance"
+                                style="background:none;border:0;color:var(--accent-ink);font-weight:650;cursor:pointer;padding:0;font:inherit">Reconcile current balance →</button>
+                    </p>
+                }
+            </div>
+
+            @if (_formError is not null)
+            {
+                <p class="form-error">@_formError</p>
+            }
+
+            <div class="sb-actions">
+                <button class="cancel" @onclick="CloseSheets">Cancel</button>
+                <button class="save" @onclick="Save">Save</button>
+            </div>
+        </div>
+    </div>
+}
+
+@* ===== SET BALANCE SHEET ===== *@
+@if (_balanceTarget is not null)
+{
+    <div class="sb-overlay" @onclick="CloseSheets">
+        <div class="sb-sheet" @onclick:stopPropagation="true">
+            <div class="grip"></div>
+
+            <div class="sb-title">Reconcile balance</div>
+            <div class="sb-sub">@_balanceTarget.Name · @TypeLabel(_balanceTarget.Type)</div>
+
+            <div class="sb-amount">
+                <div class="lbl">Balance at the bank</div>
+                <div class="val">
+                    <span class="cur">$</span>
+                    <input type="number" step="0.01" @bind="_newBalance" @bind:event="oninput" />
+                </div>
+            </div>
+            <p class="hint recon-hint">Use the <b>posted</b> balance from your bank's site — the running-balance column, not the "available" figure (that one subtracts in-process transactions).</p>
+
+            <div class="sb-recon">
+                <div class="line">
+                    <span class="k">Balance in app</span>
+                    <span class="v">@Money(_balanceTarget.CurrentBalance)</span>
+                </div>
+                <div class="line">
+                    <span class="k">Difference</span>
+                    <span class="v @AdjClass">@AdjLabel</span>
+                </div>
+            </div>
+
+            <div class="sb-opt" @onclick="() => _recordAdjustment = !_recordAdjustment">
+                <div class="txt">
+                    <div class="t">Record adjustment as a transaction</div>
+                    <div class="d">@AdjOptionHint</div>
+                </div>
+                <div class="switch @(_recordAdjustment ? "" : "off")"></div>
+            </div>
+
+            @if (_recordAdjustment && Delta != 0m)
+            {
+                <div class="sb-field">
+                    <label>Note (optional)</label>
+                    <input class="control" @bind="_balanceNote" placeholder="Balance adjustment" />
+                </div>
+            }
+
+            <div class="sb-actions">
+                <button class="cancel" @onclick="CloseSheets">Cancel</button>
+                <button class="save" disabled="@_balanceBusy" @onclick="SaveBalance">Save balance</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<AccountDto> _accounts = Array.Empty<AccountDto>();
+    private EditModel? _editing;
+    private AccountDto? _archiveTarget;
+    private string? _formError;
+
+    // Set-balance sheet state.
+    private AccountDto? _balanceTarget;
+    private decimal _newBalance;
+    private bool _recordAdjustment;
+    private string? _balanceNote;
+    private bool _balanceBusy;
+
+    private decimal TotalBalance => _accounts.Sum(a => a.CurrentBalance);
+
+    private decimal Delta => _balanceTarget is null ? 0m : _newBalance - _balanceTarget.CurrentBalance;
+    private string AdjClass => Delta > 0 ? "inc" : Delta < 0 ? "exp" : "zero";
+    private string AdjLabel => (Delta > 0 ? "+" : Delta < 0 ? "−" : "") + Math.Abs(Delta).ToString("C");
+
+    private string AdjOptionHint => Delta == 0m
+        ? "Balances match — nothing to record."
+        : $"Adds a {(Delta > 0 ? "+" : "−")}{Math.Abs(Delta).ToString("C")} \"Balance adjustment\" on today's date, so your history still adds up. It won't count in monthly income/spending.";
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload() => _accounts = await AccountSvc.ListAsync();
+
+    private void StartNew()
+    {
+        CloseSheets();
+        _editing = new EditModel();
+    }
+
+    private void StartEdit(AccountDto a)
+    {
+        CloseSheets();
+        _editing = new EditModel
+        {
+            Id = a.Id,
+            Name = a.Name,
+            Type = a.Type,
+            OpeningBalance = a.OpeningBalance,
+        };
+    }
+
+    // Jump from the Edit sheet straight to the Set balance sheet for the same account.
+    private void SwitchToSetBalance()
+    {
+        if (_editing?.Id is not Guid id) return;
+        var a = _accounts.FirstOrDefault(x => x.Id == id);
+        if (a is not null) StartSetBalance(a); // StartSetBalance closes the Edit sheet first
+    }
+
+    private async Task Save()
+    {
+        if (_editing is null) return;
+        if (string.IsNullOrWhiteSpace(_editing.Name))
+        {
+            _formError = "Give the account a name.";
+            return;
+        }
+        await AccountSvc.UpsertAsync(new AccountUpsertDto(_editing.Id, _editing.Name.Trim(), _editing.Type, _editing.OpeningBalance));
+        CloseSheets();
+        await Reload();
+    }
+
+    private void StartArchive(AccountDto a)
+    {
+        CloseSheets();
+        _archiveTarget = a;
+    }
+
+    private async Task ArchiveAccount()
+    {
+        if (_archiveTarget is null) return;
+        await AccountSvc.ArchiveAsync(_archiveTarget.Id);
+        CloseSheets();
+        await Reload();
+    }
+
+    private void StartSetBalance(AccountDto a)
+    {
+        CloseSheets();
+        _balanceTarget = a;
+        _newBalance = a.CurrentBalance;
+        _recordAdjustment = false;
+        _balanceNote = null;
+    }
+
+    private async Task SaveBalance()
+    {
+        if (_balanceTarget is null) return;
+        _balanceBusy = true;
+        try
+        {
+            await AccountSvc.SetBalanceAsync(new SetBalanceDto(_balanceTarget.Id, _newBalance, _recordAdjustment, _balanceNote));
+            CloseSheets();
+            await Reload();
+        }
+        finally
+        {
+            _balanceBusy = false;
+        }
+    }
+
+    private void CloseSheets()
+    {
+        _editing = null;
+        _archiveTarget = null;
+        _balanceTarget = null;
+        _formError = null;
+    }
+
+    private static string Money(decimal v) => (v < 0 ? "−" : "") + Math.Abs(v).ToString("C");
+
+    // Account-type visuals live in AccountUi (shared with Home and the
+    // total-balance sheet); these aliases keep the markup terse.
+    private static string TypeIconName(AccountType t) => AccountUi.IconName(t);
+    private static string TypeTileClass(AccountType t) => AccountUi.TileClass(t);
+    private static string TypeLabel(AccountType t) => AccountUi.Label(t);
+
+    private class EditModel
+    {
+        public Guid? Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public AccountType Type { get; set; } = AccountType.Checking;
+        public decimal OpeningBalance { get; set; }
+    }
+}

@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup 09 — Transaction detail modal</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-2: #161c24;
+    --card: #1a2027;
+    --card-2: #232b35;
+    --text: #e8edf2;
+    --muted: #8b95a3;
+    --accent: #2ecc71;
+    --accent-hover: #5edc8c;
+    --accent-soft: rgba(46,204,113,0.12);
+    --danger: #e74c3c;
+    --danger-soft: rgba(231,76,60,0.14);
+    --border: #2a3340;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 520px;
+  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 0 18px; }
+  .back { color: var(--muted); text-decoration: none; font-size: 14px; }
+  h1 { font-size: 22px; margin: 0 0 8px; }
+  p.intro { color: var(--muted); font-size: 14px; line-height: 1.5; margin: 0 0 22px; }
+  .caption { color: var(--muted); font-size: 12px; text-align: center; margin: 34px 0 14px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+  /* ===== LIST (behind the modal) — same look as mockup 06 ===== */
+  .day-head { display: flex; justify-content: space-between; align-items: baseline; padding: 0 4px 8px; }
+  .day-head .d { font-size: 13px; font-weight: 600; color: var(--text); }
+  .day-head .t.inc { font-size: 12px; color: var(--accent); }
+  .list { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .row:last-child { border-bottom: none; }
+  .row.tapped { background: var(--card-2); }
+  .row .ic { width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0; background: var(--card-2); display: grid; place-items: center; font-size: 19px; }
+  .row .mid { flex: 1; min-width: 0; }
+  .row .name { font-size: 14px; font-weight: 600; }
+  .row .sub { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .acct-tag { font-size: 11px; color: var(--muted); background: var(--card-2); border-radius: 5px; padding: 1px 6px; margin-right: 6px; }
+  .row .amt { font-size: 15px; font-weight: 700; flex-shrink: 0; }
+  .row .amt.inc { color: var(--accent); }
+  .row .amt.exp { color: var(--danger); }
+
+  /* ===== STAGE: shows the modal sitting "in place" over the dimmed list ===== */
+  .stage { position: relative; border-radius: 16px; overflow: hidden; }
+  .stage .backdrop {
+    position: absolute; inset: 0;
+    background: rgba(7,10,14,0.62);
+    backdrop-filter: blur(2px);
+    display: grid; place-items: center; padding: 14px;
+  }
+
+  /* ===== DETAIL MODAL ===== */
+  .modal {
+    width: 100%; max-width: 380px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 6px 18px 18px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+  }
+  .modal.standalone { margin: 0 auto; } /* the two variants below, not over a list */
+  .modal-bar { display: flex; justify-content: flex-end; height: 30px; }
+  .modal-close { border: 0; background: transparent; color: var(--muted); font-size: 24px; line-height: 1; cursor: pointer; padding: 2px 4px; }
+
+  .hero { text-align: center; padding: 0 0 14px; }
+  .hero .ic { width: 52px; height: 52px; border-radius: 15px; margin: 0 auto 10px; background: var(--card-2); display: grid; place-items: center; font-size: 25px; }
+  .hero .amt { font-size: 34px; font-weight: 800; letter-spacing: -0.02em; }
+  .hero .amt.inc { color: var(--accent); }
+  .hero .amt.exp { color: var(--danger); }
+  .hero .amt.transfer { color: var(--text); }
+  .hero .kind { color: var(--muted); font-size: 13px; margin-top: 5px; }
+
+  .details { display: flex; flex-direction: column; }
+  .drow { display: flex; justify-content: space-between; gap: 14px; padding: 11px 1px; border-top: 1px solid var(--border); font-size: 14px; align-items: baseline; }
+  .drow .dk { color: var(--muted); flex-shrink: 0; }
+  .drow .dv { text-align: right; }
+  .drow .dv.muted { color: var(--muted); }
+  .drow .dv.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12.5px; color: var(--muted); letter-spacing: 0.02em; }
+  .drow.stack { flex-direction: column; gap: 5px; align-items: stretch; }
+  .drow.stack .dv { text-align: left; line-height: 1.45; }
+
+  .badge { display: inline-flex; align-items: center; gap: 5px; background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 600; }
+  .badge.neutral { background: var(--card-2); color: var(--muted); }
+  .link { color: var(--accent); cursor: pointer; }
+
+  .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal-actions button { flex: 1; border-radius: 10px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: var(--card-2); color: var(--text); }
+  .modal-actions .edit { background: var(--accent); color: #06210f; border-color: var(--accent); }
+  .modal-actions .delete { background: transparent; color: var(--danger); border-color: rgba(231,76,60,0.5); }
+
+  .note-tip { font-size: 12.5px; color: var(--muted); line-height: 1.5; margin: 12px 0 0; padding: 10px 12px; background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="index.html">‹ All mockups</a>
+    <span style="color:var(--muted);font-size:13px;">09 · Transaction detail</span>
+  </div>
+
+  <h1>Tap a transaction → detail modal</h1>
+  <p class="intro">
+    Today a tap drops you straight into the edit form. This inserts a read-only <b>detail</b> step first —
+    most useful for imported rows, where the bank's full description and reference are truncated in the list.
+    <b>Edit</b> still opens your existing sheet; this just gives you a place to <i>read</i> first.
+  </p>
+
+  <!-- ============ PRIMARY: modal in place over the dimmed list ============ -->
+  <div class="caption">Tapping the highlighted row opens this ↓</div>
+
+  <div class="stage">
+    <!-- the live list, sitting behind the modal -->
+    <div class="day-head"><span class="d">Fri, May 29</span><span class="t inc">+$1,294.17</span></div>
+    <div class="list">
+      <div class="row tapped">
+        <div class="ic">💵</div>
+        <div class="mid">
+          <div class="name">Uncategorized</div>
+          <div class="sub"><span class="acct-tag">BPPR Checking</span>EFT DEPOSIT OPTIMA SEGU…</div>
+        </div>
+        <div class="amt inc">+$1,346.17</div>
+      </div>
+      <div class="row">
+        <div class="ic">🧾</div>
+        <div class="mid">
+          <div class="name">Uncategorized</div>
+          <div class="sub"><span class="acct-tag">BPPR Checking</span>PURCHASE TOTAL OXXEN SU…</div>
+        </div>
+        <div class="amt exp">−$56.00</div>
+      </div>
+    </div>
+
+    <!-- the modal, overlaid -->
+    <div class="backdrop">
+      <div class="modal">
+        <div class="modal-bar"><button class="modal-close">×</button></div>
+
+        <div class="hero">
+          <div class="ic">💵</div>
+          <div class="amt inc">+$1,346.17</div>
+          <div class="kind">Income · Uncategorized</div>
+        </div>
+
+        <div class="details">
+          <div class="drow"><span class="dk">Account</span><span class="dv">BPPR Checking</span></div>
+          <div class="drow"><span class="dk">Date</span><span class="dv">Friday, May 29, 2026</span></div>
+          <div class="drow stack">
+            <span class="dk">Description</span>
+            <span class="dv">EFT DEPOSIT OPTIMA SEGUROS PAYMENT</span>
+          </div>
+          <div class="drow"><span class="dk">Category</span><span class="dv"><span class="link">＋ Categorize</span></span></div>
+          <div class="drow"><span class="dk">Source</span><span class="dv"><span class="badge">⬇ Imported · OFX</span></span></div>
+          <div class="drow"><span class="dk">Bank ref (FITID)</span><span class="dv mono">202605290044812</span></div>
+          <div class="drow"><span class="dk">Added</span><span class="dv muted">May 30, 2026 · 9:14 AM</span></div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="delete">Delete</button>
+          <button class="edit">Edit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="note-tip">
+    💡 Why this helps your imported data: the full <b>Description</b> wraps instead of being cut off, the
+    <b>Bank ref (FITID)</b> is the dedupe key behind re-imports (handy when reconciling), and <b>Source</b>
+    makes it obvious a row came from the bank vs. one you typed.
+  </p>
+
+  <!-- ============ VARIANT: manually-added, categorized expense ============ -->
+  <div class="caption">A manual, categorized expense — bank rows drop away ↓</div>
+
+  <div class="modal standalone">
+    <div class="modal-bar"><button class="modal-close">×</button></div>
+
+    <div class="hero">
+      <div class="ic">🛒</div>
+      <div class="amt exp">−$72.40</div>
+      <div class="kind">Expense · Groceries</div>
+    </div>
+
+    <div class="details">
+      <div class="drow"><span class="dk">Account</span><span class="dv">BPPR Checking</span></div>
+      <div class="drow"><span class="dk">Date</span><span class="dv">Monday, May 18, 2026</span></div>
+      <div class="drow stack">
+        <span class="dk">Note</span>
+        <span class="dv">Costco run</span>
+      </div>
+      <div class="drow"><span class="dk">Category</span><span class="dv">🛒 Groceries</span></div>
+      <div class="drow"><span class="dk">Source</span><span class="dv"><span class="badge neutral">✎ Added manually</span></span></div>
+      <div class="drow"><span class="dk">Added</span><span class="dv muted">May 18, 2026 · 6:32 PM</span></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="delete">Delete</button>
+      <button class="edit">Edit</button>
+    </div>
+  </div>
+
+  <!-- ============ VARIANT: transfer (two accounts, not editable) ============ -->
+  <div class="caption">A transfer — shows both sides, no Edit ↓</div>
+
+  <div class="modal standalone">
+    <div class="modal-bar"><button class="modal-close">×</button></div>
+
+    <div class="hero">
+      <div class="ic">⇄</div>
+      <div class="amt transfer">$200.00</div>
+      <div class="kind">Transfer</div>
+    </div>
+
+    <div class="details">
+      <div class="drow"><span class="dk">From</span><span class="dv">BPPR Checking</span></div>
+      <div class="drow"><span class="dk">To</span><span class="dv">Savings</span></div>
+      <div class="drow"><span class="dk">Date</span><span class="dv">Sunday, May 24, 2026</span></div>
+      <div class="drow stack">
+        <span class="dk">Note</span>
+        <span class="dv">Move to savings</span>
+      </div>
+      <div class="drow"><span class="dk">Source</span><span class="dv"><span class="badge neutral">⇄ Transfer</span></span></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="delete">Delete transfer</button>
+      <button>Close</button>
+    </div>
+  </div>
+
+  <p class="note-tip" style="margin-bottom:28px;">
+    One modal, three shapes: it hides <b>Source</b>/<b>Bank ref</b> for manual rows, and swaps to
+    From/To with no <b>Edit</b> for transfers (matching today's "transfers can't be edited" rule).
+  </p>
+</body>
+</html>

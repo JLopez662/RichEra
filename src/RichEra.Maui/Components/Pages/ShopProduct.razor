@@ -1,0 +1,341 @@
+@page "/shop/item/{Kind}/{Id:guid}"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@using RichEra.Maui.Services
+@inject IItemService ItemSvc
+@inject IAccountService AccountSvc
+@inject ISavingsService SavingsSvc
+@inject IItemImageService ImageSvc
+@inject IIncomeProjectionService Projection
+@inject ShopCartState Cart
+@inject NavigationManager Nav
+
+<PageTitle>@(_title ?? "Item")</PageTitle>
+
+<div class="shop-bar">
+    <button class="back" @onclick='() => Nav.NavigateTo("/shop")' aria-label="Back"><Icon Name="chevron-left" /></button>
+    <button class="cart-btn" @onclick='() => Nav.NavigateTo("/shop/cart")' aria-label="Cart">
+        <Icon Name="shopping-cart" />
+        @if (Cart.Count > 0)
+        {
+            <span class="badge">@Cart.Count</span>
+        }
+    </button>
+</div>
+
+@if (_title is null)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else
+{
+    <div class="detail-img @_tint @(_imageUri is null ? null : "has-photo")">
+        @if (_imageUri is not null)
+        {
+            <img src="@_imageUri" alt="@_title" />
+        }
+        else
+        {
+            <Icon Name="@_icon" />
+        }
+    </div>
+    <div class="photo-actions">
+        <button type="button" class="photo-btn" @onclick="PickImageAsync" disabled="@_imageBusy">
+            <Icon Name="image" Size="15" /> <span>@(_imageUri is null ? "Add photo" : "Change photo")</span>
+        </button>
+        @if (_imageUri is not null)
+        {
+            <button type="button" class="photo-btn ghost" @onclick="RemoveImageAsync" disabled="@_imageBusy">Remove</button>
+        }
+    </div>
+    <div class="dtitle">@_title</div>
+    <div class="dsub">@_sub</div>
+    @if (_dueLabel is not null)
+    {
+        <div class="due-row">
+            <span class="due-pill @_dueClass">
+                <Icon Name="calendar" Size="15" /> @_dueLabel<span class="due-date"> · @_dueWhen</span>
+            </span>
+        </div>
+    }
+    @if (_info is not null)
+    {
+        <div class="dinfo">@_info</div>
+    }
+
+    <div class="amt-field">
+        <label>Amount</label>
+        <div class="amt-row"><span class="cur">$</span><input type="number" step="0.01" min="0" @bind="_amount" /></div>
+    </div>
+
+    @if (_needsFunding)
+    {
+        <div class="amt-field">
+            <label>Pay from</label>
+            @if (_fundingAccounts.Count == 0)
+            {
+                <p class="hint">Add a checking or cash account to fund this payment.</p>
+            }
+            else
+            {
+                <select class="fund-select" @bind="_fromId">
+                    @foreach (var a in _fundingAccounts)
+                    {
+                        <option value="@a.Id">@a.Name</option>
+                    }
+                </select>
+            }
+        </div>
+    }
+
+    @if (_err is not null)
+    {
+        <p class="err">@_err</p>
+    }
+
+    <button class="bigbuy" @onclick="OrderNow" disabled="@(!CanFund)">Order now</button>
+    <button class="bigbuy alt" @onclick="AddToCart" disabled="@(!CanFund)">@(InCart ? "Update cart" : "Add to cart")</button>
+
+    <button class="paysite" disabled>Pay on its site — coming soon</button>
+}
+
+@code {
+    [Parameter] public string Kind { get; set; } = "";
+    [Parameter] public Guid Id { get; set; }
+
+    private ShopItemKind _kind;
+    private string? _title;
+    private string _icon = "shopping-bag";
+    private string _tint = "rose";
+    private string? _sub;
+    private string? _info;
+    private decimal _amount;
+    private string? _err;
+
+    // Optional user-supplied picture, as a ready-to-render data: URI.
+    private string? _imageUri;
+    private bool _imageBusy;
+
+    // Next-payment countdown (recurring expenses only).
+    private string? _dueLabel;
+    private string? _dueWhen;
+    private string _dueClass = "due-neutral";
+
+    // Funding (card payments + move-to-savings deposits draw from a chosen account).
+    private bool _needsFunding;
+    private List<AccountDto> _fundingAccounts = new();
+    private Guid _fromId;
+
+    private bool InCart => _title is not null && Cart.Contains(_kind, Id);
+    private bool CanFund => !_needsFunding || _fundingAccounts.Count > 0;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _kind = Kind.ToLowerInvariant() switch
+        {
+            "card" => ShopItemKind.Card,
+            "savings" => ShopItemKind.Savings,
+            _ => ShopItemKind.Expense,
+        };
+        _imageUri = null;  // reset when navigating between items (same component instance)
+        _dueLabel = null;  // only expenses carry a next-payment date
+
+        switch (_kind)
+        {
+            case ShopItemKind.Expense:
+                var e = await ItemSvc.GetAsync(Id);
+                if (e is null) return;
+                _title = e.Name;
+                _icon = string.IsNullOrWhiteSpace(e.Icon) ? "receipt" : e.Icon!;
+                _tint = "rose";
+                _sub = e.Frequency is RepeatFrequency f
+                    ? $"Recurring {f.ToString().ToLowerInvariant()} · from {e.AccountName}"
+                    : $"From {e.AccountName}";
+                _amount = e.Amount;
+
+                var next = await Projection.GetNextOccurrenceAsync(e.Id);
+                if (next is { } due)
+                {
+                    var days = due.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+                    _dueLabel = days <= 0 ? "Due today" : days == 1 ? "Due tomorrow" : $"Due in {days} days";
+                    _dueWhen = due.ToString("ddd, MMM d");
+                    _dueClass = days <= 0 ? "due-rose" : days <= 3 ? "due-amber" : "due-neutral";
+                }
+                break;
+
+            case ShopItemKind.Card:
+                var a = await AccountSvc.GetAsync(Id);
+                if (a is null) return;
+                _title = a.Name; _icon = "credit-card"; _tint = "amber";
+                _sub = "Credit card payment";
+                // Card debt is stored as a negative balance; default to pay-in-full.
+                _info = a.CurrentBalance < 0 ? $"Owed {Math.Abs(a.CurrentBalance):C}" : $"Balance {a.CurrentBalance:C}";
+                _amount = a.CurrentBalance < 0 ? Math.Abs(a.CurrentBalance) : 0m;
+                _needsFunding = true;
+                await LoadFundingAsync(excludeId: a.Id);
+                break;
+
+            case ShopItemKind.Savings:
+                var g = await SavingsSvc.GetGoalAsync();
+                if (g is null || g.Id != Id) return;
+                _title = g.Name; _icon = "piggy-bank"; _tint = "green";
+                _info = $"Target {g.TargetAmount:C}";
+                if (g.Mode == SavingsMode.MoveToSavings)
+                {
+                    _sub = $"Savings deposit → {g.LinkedAccountName}";
+                    _needsFunding = true;
+                    await LoadFundingAsync(excludeId: g.LinkedAccountId);
+                }
+                else
+                {
+                    _sub = "Savings deposit (tracked)";
+                }
+                break;
+        }
+
+        if (_title is not null)
+        {
+            var img = await ImageSvc.GetAsync(Kind, Id);
+            _imageUri = img?.DataUri;
+        }
+
+        if (InCart)
+        {
+            var line = Cart.Lines.First(l => l.Kind == _kind && l.Id == Id);
+            _amount = line.Amount;
+            if (line.FromAccountId is Guid f && _fundingAccounts.Any(x => x.Id == f)) _fromId = f;
+        }
+    }
+
+    // Accounts the user can pay from — any active account except the destination, with a
+    // sensible default (Checking, then Cash, then whatever's first).
+    private async Task LoadFundingAsync(Guid? excludeId)
+    {
+        var all = await AccountSvc.ListAsync();
+        _fundingAccounts = all.Where(x => x.Id != excludeId).ToList();
+        if (_fundingAccounts.Count == 0) return;
+        var def = _fundingAccounts.FirstOrDefault(x => x.Type == AccountType.Checking)
+                  ?? _fundingAccounts.FirstOrDefault(x => x.Type == AccountType.Cash)
+                  ?? _fundingAccounts[0];
+        _fromId = def.Id;
+    }
+
+    private void AddToCart()
+    {
+        if (!AddLine()) return;
+        Nav.NavigateTo("/shop");
+    }
+
+    private void OrderNow()
+    {
+        if (!AddLine()) return;
+        Nav.NavigateTo("/shop/cart");
+    }
+
+    private bool AddLine()
+    {
+        if (_title is null) return false;
+        if (_amount <= 0m)
+        {
+            _err = "Enter an amount greater than 0.";
+            return false;
+        }
+
+        Guid? fromId = null;
+        string? fromName = null;
+        if (_needsFunding)
+        {
+            var from = _fundingAccounts.FirstOrDefault(x => x.Id == _fromId);
+            if (from is null)
+            {
+                _err = "Choose an account to pay from.";
+                return false;
+            }
+            fromId = from.Id;
+            fromName = from.Name;
+        }
+
+        Cart.Add(new ShopCartLine
+        {
+            Kind = _kind, Id = Id, Title = _title, Icon = _icon, Amount = _amount,
+            FromAccountId = fromId, FromName = fromName,
+        });
+        return true;
+    }
+
+    private async Task PickImageAsync()
+    {
+        if (_imageBusy) return;
+        _err = null;
+        _imageBusy = true;
+        try
+        {
+            var file = await Microsoft.Maui.Media.MediaPicker.Default.PickPhotoAsync();
+            if (file is null) return; // user cancelled
+
+            var (data, contentType) = await ReadAndDownscaleAsync(file);
+            await ImageSvc.SetAsync(Kind, Id, data, contentType);
+            _imageUri = $"data:{contentType};base64,{Convert.ToBase64String(data)}";
+        }
+        catch (Exception ex)
+        {
+            _err = $"Couldn't add the image: {ex.Message}";
+        }
+        finally
+        {
+            _imageBusy = false;
+        }
+    }
+
+    private async Task RemoveImageAsync()
+    {
+        if (_imageBusy) return;
+        _err = null;
+        _imageBusy = true;
+        try
+        {
+            await ImageSvc.RemoveAsync(Kind, Id);
+            _imageUri = null;
+        }
+        catch (Exception ex)
+        {
+            _err = $"Couldn't remove the image: {ex.Message}";
+        }
+        finally
+        {
+            _imageBusy = false;
+        }
+    }
+
+    // Read the picked file and shrink it to a ~1024px JPEG so the stored blob — and every JSON
+    // auto-backup that now carries it — stays small. Downsizing uses MAUI's image API, which is
+    // implemented on Android and iOS; where it isn't (e.g. Windows without Win2D) we keep the
+    // original bytes so the feature still works, just without the size optimization.
+    private static async Task<(byte[] Data, string ContentType)> ReadAndDownscaleAsync(Microsoft.Maui.Storage.FileResult file)
+    {
+        await using var src = await file.OpenReadAsync();
+        using var buffer = new MemoryStream();
+        await src.CopyToAsync(buffer);
+        var original = buffer.ToArray();
+
+        try
+        {
+            buffer.Position = 0;
+            var image = Microsoft.Maui.Graphics.Platform.PlatformImage.FromStream(buffer);
+            using var resized = image.Downsize(1024f, disposeOriginal: true);
+            using var outMs = new MemoryStream();
+            resized.Save(outMs, Microsoft.Maui.Graphics.ImageFormat.Jpeg, quality: 0.85f);
+            var bytes = outMs.ToArray();
+            if (bytes.Length > 0)
+                return (bytes, "image/jpeg");
+        }
+        catch
+        {
+            // Downsizing unavailable on this platform — fall back to the original bytes.
+        }
+
+        var ct = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
+        return (original, ct);
+    }
+}

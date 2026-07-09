@@ -1,0 +1,145 @@
+@* Quick-reconcile bottom sheet opened from the Home hero. The total is a sum
+   of accounts, so "setting" it means entering what each account really has;
+   saving reuses the same per-account SetBalance machinery as Accounts →
+   Reconcile (one call per changed account, optional adjustment transaction).
+   Render conditionally — the component initialises its rows on creation. *@
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@inject IAccountService AccountSvc
+@inject IJSRuntime JS
+
+<div class="sb-overlay" @onclick="Cancel">
+    <div class="sb-sheet" @ref="_sheet" @onclick:stopPropagation="true">
+        <div class="grip"></div>
+
+        <div class="sb-title">Update total balance</div>
+        <div class="sb-sub">Enter what each account really has — the total follows.</div>
+
+        <div class="qb-list">
+            @foreach (var row in _rows)
+            {
+                <div class="qb-row" @key="row.Id">
+                    <div class="tile @AccountUi.TileClass(row.Type)"><Icon Name="@AccountUi.IconName(row.Type)" /></div>
+                    <div class="qb-mid">
+                        <div class="qb-name">@row.Name</div>
+                        <div class="qb-type">@AccountUi.Label(row.Type)</div>
+                    </div>
+                    <div class="qb-amt">
+                        <input type="number" step="0.01" @bind="row.NewBalance" @bind:event="oninput"
+                               aria-label="@($"{row.Name} balance")" />
+                        <div class="qb-delta @(row.Delta > 0 ? "inc" : row.Delta < 0 ? "exp" : "")">
+                            @(row.Delta == 0 ? "" : Signed(row.Delta))
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+        <p class="hint qb-hint">Use each account's <b>posted</b> balance from your bank — not the "available" figure.</p>
+
+        <div class="sb-recon">
+            <div class="line">
+                <span class="k">Total in app</span>
+                <span class="v">@Money(CurrentTotal)</span>
+            </div>
+            <div class="line">
+                <span class="k">New total</span>
+                <span class="v">@Money(NewTotal)</span>
+            </div>
+            <div class="line">
+                <span class="k">Adjustment</span>
+                <span class="v @(Adjustment > 0 ? "inc" : Adjustment < 0 ? "exp" : "zero")">@Signed(Adjustment)</span>
+            </div>
+        </div>
+
+        <div class="sb-opt" @onclick="() => _recordAdjustment = !_recordAdjustment">
+            <div class="txt">
+                <div class="t">Record adjustments as transactions</div>
+                <div class="d">@OptionHint</div>
+            </div>
+            <div class="switch @(_recordAdjustment ? "" : "off")"></div>
+        </div>
+
+        <div class="sb-actions">
+            <button class="cancel" @onclick="Cancel">Cancel</button>
+            <button class="save" disabled="@(_busy || ChangedRows.Count == 0)" @onclick="SaveAsync">@SaveLabel</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<AccountDto> Accounts { get; set; } = Array.Empty<AccountDto>();
+    [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnSaved { get; set; }
+
+    private ElementReference _sheet;
+    private List<Row> _rows = new();
+    private bool _recordAdjustment;
+    private bool _busy;
+
+    private decimal CurrentTotal => _rows.Sum(r => r.Stored);
+    private decimal NewTotal => _rows.Sum(r => r.Effective);
+    private decimal Adjustment => Math.Round(NewTotal - CurrentTotal, 2);
+    private List<Row> ChangedRows => _rows.Where(r => r.Delta != 0m).ToList();
+
+    private string SaveLabel => ChangedRows.Count > 1 ? $"Save {ChangedRows.Count} balances" : "Save balance";
+
+    private string OptionHint => ChangedRows.Count == 0
+        ? "Balances match — nothing to record."
+        : !_recordAdjustment
+            ? "Off — balances are overwritten silently. No transactions."
+            : ChangedRows.Count == 1
+                ? "Adds one \"Balance adjustment\" on today's date, so your history still adds up. It won't count in monthly income/spending."
+                : $"Adds {ChangedRows.Count} \"Balance adjustment\" entries on today's date, so your history still adds up. They won't count in monthly income/spending.";
+
+    protected override void OnInitialized() =>
+        _rows = Accounts.Select(a => new Row
+        {
+            Id = a.Id,
+            Name = a.Name,
+            Type = a.Type,
+            Stored = a.CurrentBalance,
+            NewBalance = a.CurrentBalance,
+        }).ToList();
+
+    // Focus the first balance field with its value selected, so the common case
+    // ("my checking is actually $X") is tap → type → save.
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+            await JS.InvokeVoidAsync("n2fFocusSelect", _sheet);
+    }
+
+    private Task Cancel() => _busy ? Task.CompletedTask : OnClose.InvokeAsync();
+
+    private async Task SaveAsync()
+    {
+        var changed = ChangedRows;
+        if (changed.Count == 0) return;
+        _busy = true;
+        try
+        {
+            foreach (var r in changed)
+                await AccountSvc.SetBalanceAsync(new SetBalanceDto(r.Id, r.Effective, _recordAdjustment, null));
+            await OnSaved.InvokeAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string Money(decimal v) => (v < 0 ? "−" : "") + Math.Abs(v).ToString("C");
+    private static string Signed(decimal v) => v > 0 ? "+" + v.ToString("C") : Money(v);
+
+    private sealed class Row
+    {
+        public Guid Id { get; init; }
+        public string Name { get; init; } = "";
+        public RichEra.Domain.Entities.AccountType Type { get; init; }
+        public decimal Stored { get; init; }
+        // Nullable so a field cleared mid-edit counts as "unchanged", not zero.
+        public decimal? NewBalance { get; set; }
+        public decimal Effective => NewBalance ?? Stored;
+        public decimal Delta => Math.Round(Effective - Stored, 2);
+    }
+}

@@ -1,0 +1,111 @@
+@page "/runway"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@inject IIncomeProjectionService Projection
+@inject NavigationManager Nav
+
+<PageTitle>Runway</PageTitle>
+
+<div class="pg-head">
+    <button class="back" @onclick='() => Nav.NavigateTo("/")' aria-label="Back"><Icon Name="chevron-left" /></button>
+    <h1 class="pg-title">Runway to payday</h1>
+    <div class="head-actions">
+        <ThemeToggle />
+    </div>
+</div>
+
+@if (_runway is null)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else if (!_runway.HasIncome)
+{
+    <div class="empty-card">
+        <div class="tile tile--green"><Icon Name="briefcase" /></div>
+        <div class="empty-title">No upcoming income</div>
+        <div class="empty-sub">Add a recurring paycheck on the Paychecks page and your runway to the next payday will show here.</div>
+    </div>
+}
+else
+{
+    <p class="lede">
+        @_runway.DaysToIncome day@(_runway.DaysToIncome == 1 ? "" : "s") ·
+        @_runway.Expenses.Count expense@(_runway.Expenses.Count == 1 ? "" : "s") ·
+        −@_runway.TotalExpenses.ToString("C") before @_runway.NextIncomeName
+    </p>
+
+    @if (_runway.GoesNegative)
+    {
+        <div class="warn-banner">
+            <Icon Name="alert-triangle" Size="16" />
+            You dip to <b>@_runway.LowestBalance.ToString("C")</b> before payday — that's short.
+        </div>
+    }
+
+    <div class="tl">
+        <div class="tl-item">
+            <div class="tl-rail"><span class="dot now"></span></div>
+            <div class="tl-c">
+                <div class="tl-d">Today · @_runway.Today.ToString("ddd, MMM d")</div>
+                <div class="tl-n">Balance now</div>
+                <div class="tl-bal">@_runway.StartingBalance.ToString("C") available</div>
+            </div>
+        </div>
+
+        @foreach (var e in _runway.Expenses)
+        {
+            var neg = e.BalanceAfter < 0m;
+            <div class="tl-item">
+                <div class="tl-rail"><span class="dot @(neg ? "warn" : "")"></span></div>
+                <div class="tl-c">
+                    <div class="tl-d">@e.Date.ToString("ddd, MMM d")</div>
+                    <div class="tl-n">@e.Name</div>
+                    <div class="tl-a">−@e.Amount.ToString("C")</div>
+                    <div class="tl-bal @(neg ? "neg" : "")">@e.BalanceAfter.ToString("C") left@(neg ? " · short" : "")</div>
+                    <div class="tl-acts">
+                        <button class="act" disabled="@_busy" @onclick="() => PaidToday(e)">Paid today</button>
+                        <button class="act ghost" disabled="@_busy" @onclick="() => MarkPaid(e)">Mark paid</button>
+                    </div>
+                </div>
+            </div>
+        }
+
+        <div class="tl-item pay">
+            <div class="tl-rail"><span class="dot pay"></span></div>
+            <div class="tl-c">
+                <div class="paybox">
+                    <div class="tl-d">@_runway.NextIncomeDate!.Value.ToString("ddd, MMM d")</div>
+                    <div class="tl-n">Payday · @_runway.NextIncomeName</div>
+                    <div class="tl-a inc">+@_runway.NextIncomeAmount.ToString("C")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private RunwayDto? _runway;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload() => _runway = await Projection.GetRunwayAsync();
+
+    // Re-anchor the rule to today and record today's payment, then refresh the roadmap.
+    private async Task PaidToday(RunwayEventDto e)
+    {
+        if (_busy) return;
+        _busy = true;
+        try { await Projection.MarkPaidTodayAsync(e.SourceId, e.Amount); await Reload(); }
+        finally { _busy = false; }
+    }
+
+    // Record it paid on its scheduled date, leaving the recurrence schedule unchanged.
+    private async Task MarkPaid(RunwayEventDto e)
+    {
+        if (_busy) return;
+        _busy = true;
+        try { await Projection.ConfirmPaycheckAsync(e.SourceId, e.Date, e.Amount); await Reload(); }
+        finally { _busy = false; }
+    }
+}

@@ -1,0 +1,53 @@
+.edit-title { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); margin: 0 2px 16px; }
+.alert { border-radius: var(--radius); }
+
+.amt-inc { color: var(--accent-ink); }
+.amt-exp { color: var(--rose-ink); }
+
+/* ===== DIRECTION SEGMENTED ===== */
+.dir-seg { display: flex; background: var(--surface-3); border-radius: 14px; padding: 4px; margin-bottom: 16px; }
+.dir-seg button {
+    flex: 1; border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    padding: 10px; border-radius: 10px; font-size: 14px; font-weight: 700;
+}
+.dir-seg button.active.inc { background: var(--accent); color: #06281f; }
+.dir-seg button.active.exp { background: var(--danger-solid); color: #fff; }
+
+/* ===== FORM CARD ===== */
+.form-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px; margin-bottom: 4px; box-shadow: var(--shadow-sm);
+}
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.field { min-width: 0; }
+.field.span2 { grid-column: 1 / -1; }
+
+/* ===== PROJECTION ===== */
+.proj {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.proj-empty { padding: 16px; color: var(--text-muted); font-size: 13px; }
+.proj-month {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 9px 14px; background: var(--surface-3);
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-muted); border-top: 1px solid var(--border);
+}
+.proj-month:first-child { border-top: none; }
+.proj-month span:last-child { letter-spacing: 0; }
+.proj-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 14px; border-top: 1px solid var(--border); font-size: 14px; color: var(--text);
+}
+.proj-day .dow { color: var(--text-faint); font-size: 12px; margin-right: 4px; }
+
+.why-not { color: var(--text-muted); font-size: 13px; margin: 12px 2px 0; }
+
+/* ===== ACTIONS ===== */
+.edit-actions { display: flex; gap: 10px; margin-top: 16px; }
+.edit-actions button { border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); }
+.edit-actions .cancel { background: var(--surface-2); color: var(--text); flex: 0 0 auto; padding-left: 22px; padding-right: 22px; }
+.edit-actions .save { flex: 1; background: var(--grad); color: #06281f; border-color: transparent; box-shadow: 0 10px 22px -10px var(--grad-shadow); }
+.edit-actions .save:disabled { opacity: 0.5; cursor: default; box-shadow: none; }

@@ -1,0 +1,20 @@
+/* Layout shell. The Aurora/Midnight gradient lives on <html> (theme.css), so
+   everything here is transparent and just handles width + clearing the
+   floating tab bar. */
+.page {
+    position: relative;
+    min-height: 100vh;
+    background: transparent;
+}
+
+main { background: transparent; }
+
+article.content {
+    max-width: 560px;
+    width: 100%;
+    margin: 0 auto;
+    /* Top: clear the status-bar inset. Bottom: clear the floating tab bar
+       (52px FAB + 14px gap + 8px padding + safe-area) plus breathing room. */
+    padding: calc(20px + env(safe-area-inset-top, 0px)) 16px
+             calc(104px + env(safe-area-inset-bottom, 0px));
+}

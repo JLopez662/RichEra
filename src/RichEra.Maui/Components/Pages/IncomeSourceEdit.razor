@@ -1,0 +1,280 @@
+@page "/income/new"
+@page "/income/{Id:guid}/edit"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject IItemService ItemSvc
+@inject IIncomeProjectionService Projection
+@inject IAccountService AccountSvc
+@inject ICategoryService CategorySvc
+@inject NavigationManager Nav
+
+<PageTitle>@Title</PageTitle>
+
+<div class="pg-head">
+    <a class="back-chip" href="/income"><Icon Name="chevron-left" Size="16" /> Paychecks</a>
+    <ThemeToggle />
+</div>
+
+<h1 class="edit-title">@Title</h1>
+
+@if (_accounts.Count == 0)
+{
+    <div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
+        <span>You need at least one <strong>account</strong> before you can save a recurring rule.</span>
+        <button class="btn btn-sm btn-primary ms-3" @onclick="@(() => Nav.NavigateTo("/accounts"))">Add account</button>
+    </div>
+}
+
+<div class="dir-seg">
+    <button class="@(IsExpense ? "" : "active inc")" @onclick="@(() => SetDirection(TransactionDirection.Income))">
+        <Icon Name="briefcase" Size="16" /> Income
+    </button>
+    <button class="@(IsExpense ? "active exp" : "")" @onclick="@(() => SetDirection(TransactionDirection.Expense))">
+        <Icon Name="receipt" Size="16" /> Expense
+    </button>
+</div>
+
+<div class="form-card">
+    <div class="fgrid">
+        <div class="field span2">
+            <label>Name</label>
+            <input class="form-control" @bind="_model.Name" placeholder="@(IsExpense ? "Rent" : "Day Job")" />
+        </div>
+        <div class="field span2">
+            <label>@(IsExpense ? "Amount per charge" : "Amount per paycheck")</label>
+            <input type="number" step="0.01" min="0" class="form-control" @bind="_model.Amount" @bind:after="RebuildPreview" />
+        </div>
+        <div class="field">
+            <label>Frequency</label>
+            <select class="form-select" @bind="_model.Frequency" @bind:after="RebuildPreview">
+                @foreach (var f in Enum.GetValues<RepeatFrequency>())
+                {
+                    <option value="@f">@f</option>
+                }
+            </select>
+        </div>
+        <div class="field">
+            <label>Starting</label>
+            <input type="date" class="form-control" @bind="_model.StartDate" @bind:after="RebuildPreview" />
+        </div>
+        <div class="field span2">
+            <label>@(IsExpense ? "Pay from" : "Deposit into")</label>
+            @if (_accounts.Count == 0)
+            {
+                <div class="form-control text-muted" style="display:flex;align-items:center;">No accounts yet</div>
+            }
+            else
+            {
+                <select class="form-select" @bind="_model.AccountId">
+                    @foreach (var a in _accounts)
+                    {
+                        <option value="@a.Id">@a.Name</option>
+                    }
+                </select>
+            }
+        </div>
+        <div class="field span2">
+            <label>Category</label>
+            <select class="form-select" @bind="_model.CategoryId">
+                <option value="">(none)</option>
+                @foreach (var c in _categories)
+                {
+                    <option value="@c.Id">@c.Name</option>
+                }
+            </select>
+        </div>
+        @if (!IsExpense)
+        {
+            <div class="field span2">
+                <label>Auto-save to savings goal</label>
+                <div style="display:flex;align-items:center;gap:10px">
+                    <input type="number" min="0" max="100" step="1" class="form-control" style="max-width:96px" @bind="_model.SavingsPercent" />
+                    <span style="color:var(--text-muted);font-size:13px">% of each paycheck set aside</span>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<div class="eyebrow"><span>Projection · next 6 @(IsExpense ? "charges" : "paychecks")</span></div>
+<div class="proj">
+    @if (_preview.Count == 0)
+    {
+        <div class="proj-empty">Enter an amount and start date to see a preview.</div>
+    }
+    else
+    {
+        DateOnly? lastMonth = null;
+        for (var i = 0; i < _preview.Count; i++)
+        {
+            var d = _preview[i];
+            var monthKey = new DateOnly(d.Year, d.Month, 1);
+            if (lastMonth != monthKey)
+            {
+                var monthTotal = _preview.Count(p => p.Month == d.Month && p.Year == d.Year) * _model.Amount;
+                <div class="proj-month">
+                    <span>@d.ToString("MMMM yyyy")</span>
+                    <span class="@AmtClass">@Sign@monthTotal.ToString("C")</span>
+                </div>
+                lastMonth = monthKey;
+            }
+            <div class="proj-row">
+                <span class="proj-day"><span class="dow">@d.DayOfWeek.ToString().Substring(0, 3)</span> @d.ToString("MMM d, yyyy")</span>
+                <span class="@AmtClass">@Sign@_model.Amount.ToString("C")</span>
+            </div>
+        }
+    }
+</div>
+
+@if (!CanSave && _accounts.Count > 0)
+{
+    <div class="why-not">@WhyNotSavable</div>
+}
+
+<div class="edit-actions">
+    <button class="cancel" @onclick="Cancel">Cancel</button>
+    <button class="save" @onclick="Save" disabled="@(!CanSave)">@(_isNew ? "Save rule" : "Save changes")</button>
+</div>
+
+@code {
+    [Parameter] public Guid? Id { get; set; }
+    [SupplyParameterFromQuery(Name = "dir")] public string? Dir { get; set; }
+
+    private bool _isNew => Id is null;
+    private EditModel _model = new();
+    private IReadOnlyList<AccountDto> _accounts = Array.Empty<AccountDto>();
+    private IReadOnlyList<CategoryDto> _categories = Array.Empty<CategoryDto>();
+    private List<DateOnly> _preview = new();
+
+    private bool IsExpense => _model.Direction == TransactionDirection.Expense;
+    private string Sign => IsExpense ? "−" : "+";
+    private string AmtClass => IsExpense ? "amt-exp" : "amt-inc";
+    private string Title => (_isNew ? "New " : "Edit ") + (IsExpense ? "expense rule" : "income source");
+
+    private bool CanSave =>
+        !string.IsNullOrWhiteSpace(_model.Name)
+        && _model.Amount > 0
+        && _model.AccountId != Guid.Empty;
+
+    private string WhyNotSavable
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_model.Name)) return "Add a name.";
+            if (_model.Amount <= 0) return "Amount must be greater than zero.";
+            if (_model.AccountId == Guid.Empty) return "Pick an account.";
+            return "";
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        _accounts = await AccountSvc.ListAsync();
+
+        if (Id is Guid id)
+        {
+            var s = await ItemSvc.GetAsync(id);
+            if (s is not null)
+            {
+                _model = new EditModel
+                {
+                    Name = s.Name,
+                    Amount = s.Amount,
+                    Direction = s.Direction,
+                    // This editor only handles scheduled items; default any ad-hoc stray sanely.
+                    Frequency = s.Frequency ?? RepeatFrequency.Biweekly,
+                    StartDate = (s.StartDate ?? DateOnly.FromDateTime(DateTime.Today)).ToDateTime(TimeOnly.MinValue),
+                    AccountId = s.AccountId,
+                    CategoryId = s.CategoryId,
+                    SavingsPercent = s.SavingsPercent,
+                };
+            }
+        }
+        else
+        {
+            _model.Direction = string.Equals(Dir, "expense", StringComparison.OrdinalIgnoreCase)
+                ? TransactionDirection.Expense
+                : TransactionDirection.Income;
+            _model.StartDate = IsExpense ? NextDay(DateTime.Today, DayOfWeek.Saturday) : NextDay(DateTime.Today, DayOfWeek.Friday);
+            if (_accounts.Count > 0) _model.AccountId = _accounts[0].Id;
+        }
+
+        await LoadCategoriesAsync();
+        RebuildPreview();
+    }
+
+    private async Task SetDirection(TransactionDirection direction)
+    {
+        if (_model.Direction == direction) return;
+        _model.Direction = direction;
+        await LoadCategoriesAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        var kind = IsExpense ? CategoryKind.Expense : CategoryKind.Income;
+        _categories = await CategorySvc.ListAsync(kind);
+        // Reset the category if it no longer belongs to the selected kind.
+        if (_model.CategoryId is Guid cid && _categories.All(c => c.Id != cid))
+            _model.CategoryId = null;
+    }
+
+    private void RebuildPreview()
+    {
+        _preview.Clear();
+        if (_model.Amount <= 0) return;
+        var step = _model.Frequency switch
+        {
+            RepeatFrequency.Weekly => 7,
+            RepeatFrequency.Biweekly => 14,
+            _ => 0
+        };
+        var cursor = DateOnly.FromDateTime(_model.StartDate);
+        for (var i = 0; i < 6; i++)
+        {
+            _preview.Add(cursor);
+            cursor = _model.Frequency == RepeatFrequency.Monthly
+                ? cursor.AddMonths(1)
+                : cursor.AddDays(step);
+        }
+    }
+
+    private async Task Save()
+    {
+        var dto = new ItemUpsertDto(
+            Id,
+            _model.Name.Trim(),
+            _model.Amount,
+            _model.Direction,
+            _model.Frequency,
+            DateOnly.FromDateTime(_model.StartDate),
+            _model.AccountId,
+            _model.CategoryId == Guid.Empty ? null : _model.CategoryId,
+            null,
+            IsExpense ? 0 : _model.SavingsPercent);
+        var saved = await ItemSvc.UpsertAsync(dto);
+        Nav.NavigateTo($"/income/{saved.Id}/ledger");
+    }
+
+    private void Cancel() => Nav.NavigateTo("/income");
+
+    private static DateTime NextDay(DateTime from, DayOfWeek day)
+    {
+        var d = from;
+        while (d.DayOfWeek != day) d = d.AddDays(1);
+        return d;
+    }
+
+    private class EditModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public decimal Amount { get; set; }
+        public TransactionDirection Direction { get; set; } = TransactionDirection.Income;
+        public RepeatFrequency Frequency { get; set; } = RepeatFrequency.Biweekly;
+        public DateTime StartDate { get; set; } = DateTime.Today;
+        public Guid AccountId { get; set; }
+        public Guid? CategoryId { get; set; }
+        public int SavingsPercent { get; set; }
+    }
+}

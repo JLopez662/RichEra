@@ -1,0 +1,234 @@
+@page "/backup"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using Microsoft.Maui.Storage
+@using CommunityToolkit.Maui.Storage
+@using RichEra.Maui.Services
+@implements IDisposable
+@inject IDataPortabilityService Portability
+@inject AutoBackupService AutoBackup
+
+<PageTitle>Backup</PageTitle>
+
+<div class="pg-head">
+    <h1 class="pg-title">Backup</h1>
+    <div class="head-actions">
+        <ThemeToggle />
+    </div>
+</div>
+<p class="lede">Save all your data to a JSON file, or restore everything from one.</p>
+
+<div class="bk-card">
+    <div class="bk-top">
+        <div class="bk-head">
+            <div class="bk-title">Automatic backup</div>
+            <div class="bk-sub">When on, a backup is rewritten a few seconds after any change, to a fixed location on this device.</div>
+        </div>
+        <div class="switch @(AutoBackup.IsEnabled ? "" : "off")" role="switch" aria-checked="@AutoBackup.IsEnabled" @onclick="ToggleAuto"></div>
+    </div>
+    @if (AutoBackup.IsEnabled)
+    {
+        <div class="bk-status">
+            <span class="dot @(AutoBackup.LastAutoBackupError is null ? "ok" : "bad")"></span>
+            @if (AutoBackup.IsRunning)
+            {
+                <span>Saving…</span>
+            }
+            else if (AutoBackup.LastAutoBackupUtc is { } t)
+            {
+                <span>Last auto-saved @t.ToLocalTime().ToString("g")</span>
+            }
+            else
+            {
+                <span>No auto-save yet — make a change and it'll save within a few seconds.</span>
+            }
+        </div>
+        <div class="bk-path"><Icon Name="folder" Size="13" /> <code>@AutoBackup.BackupFilePath</code></div>
+        @if (AutoBackup.LastAutoBackupError is { } err)
+        {
+            <p class="bk-err">Last auto-save failed: @err</p>
+        }
+    }
+</div>
+
+<div class="bk-card">
+    <div class="bk-title">Save a backup</div>
+    <div class="bk-sub">Exports every account, category, recurring item and transaction into a single <code>.json</code> file, then lets you choose where to save it.</div>
+    <div class="bk-actions">
+        <button class="bk-btn primary" disabled="@_busy" @onclick="ExportAsync">
+            <Icon Name="archive" Size="16" /> @(_busy && _mode == Mode.Export ? "Working…" : "Save backup")
+        </button>
+    </div>
+</div>
+
+<div class="bk-card">
+    <div class="bk-title">Restore from a backup</div>
+    <div class="alert alert-warning">
+        <strong>This replaces everything.</strong> Restoring deletes all current data and loads the contents of the backup file in its place. This can't be undone.
+    </div>
+
+    <div class="bk-actions">
+        <button class="bk-btn ghost" disabled="@_busy" @onclick="PickFileAsync">
+            <Icon Name="folder" Size="16" /> Choose backup file
+        </button>
+    </div>
+
+    @if (_pickedFileName is not null)
+    {
+        <div class="bk-picked">
+            <p class="bk-picked-name">Selected: <strong>@_pickedFileName</strong></p>
+            <label class="bk-confirm">
+                <input type="checkbox" @bind="_confirmRestore" />
+                <span>Yes, delete all current data and replace it with this file.</span>
+            </label>
+            <div class="bk-actions">
+                <button class="bk-btn danger" disabled="@(_busy || !_confirmRestore)" @onclick="RestoreAsync">
+                    @(_busy && _mode == Mode.Restore ? "Restoring…" : "Restore now")
+                </button>
+                <button class="bk-btn ghost" disabled="@_busy" @onclick="ClearPick">Cancel</button>
+            </div>
+        </div>
+    }
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@if (_status is not null)
+{
+    <div class="alert alert-success">@_status</div>
+}
+
+@code {
+    private enum Mode { None, Export, Restore }
+
+    private bool _busy;
+    private Mode _mode = Mode.None;
+    private string? _error;
+    private string? _status;
+
+    private string? _pickedFileName;
+    private byte[]? _pickedBytes;
+    private bool _confirmRestore;
+
+    protected override void OnInitialized() => AutoBackup.StateChanged += OnAutoBackupStateChanged;
+
+    public void Dispose() => AutoBackup.StateChanged -= OnAutoBackupStateChanged;
+
+    // Fired from a background timer thread, so marshal back to the renderer.
+    private void OnAutoBackupStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void ToggleAuto() => AutoBackup.SetEnabled(!AutoBackup.IsEnabled);
+
+    private async Task ExportAsync()
+    {
+        _busy = true;
+        _mode = Mode.Export;
+        _error = null;
+        _status = null;
+        try
+        {
+            var json = await Portability.ExportAsJsonAsync();
+            var fileName = $"richera-backup-{DateTime.Now:yyyy-MM-dd-HHmm}.json";
+
+            using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
+            var result = await FileSaver.Default.SaveAsync(fileName, stream, CancellationToken.None);
+
+            if (result.IsSuccessful)
+            {
+                _status = $"Backup saved to {result.FilePath}";
+            }
+            // If not successful the user cancelled the folder picker — stay quiet.
+        }
+        catch (Exception ex)
+        {
+            _error = $"Couldn't create the backup: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            _mode = Mode.None;
+        }
+    }
+
+    private async Task PickFileAsync()
+    {
+        _error = null;
+        _status = null;
+        try
+        {
+            var jsonType = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                // JSON files arrive with inconsistent MIME types on Android, so allow any file.
+                [DevicePlatform.Android] = new[] { "*/*" },
+                [DevicePlatform.WinUI] = new[] { ".json" },
+                [DevicePlatform.iOS] = new[] { "public.json", "public.text" },
+                [DevicePlatform.macOS] = new[] { "json", "txt" },
+            });
+
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Pick a backup file",
+                FileTypes = jsonType,
+            });
+            if (result is null) return; // user cancelled
+
+            using var stream = await result.OpenReadAsync();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+
+            _pickedFileName = result.FileName;
+            _pickedBytes = ms.ToArray();
+            _confirmRestore = false;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Couldn't read that file: {ex.Message}";
+            ClearPick();
+        }
+    }
+
+    private async Task RestoreAsync()
+    {
+        if (_pickedBytes is null || !_confirmRestore) return;
+        _busy = true;
+        _mode = Mode.Restore;
+        _error = null;
+        _status = null;
+        try
+        {
+            var json = System.Text.Encoding.UTF8.GetString(_pickedBytes);
+            var result = await Portability.ImportFromJsonAsync(json);
+
+            if (result.Success)
+            {
+                var c = result.Counts!;
+                _status = $"{result.Message} Restored {c.Accounts} account(s), {c.Categories} categor(ies), " +
+                          $"{c.Items} money item(s) and {c.Transactions} transaction(s).";
+                ClearPick();
+            }
+            else
+            {
+                _error = result.Message;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = $"Restore failed: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+            _mode = Mode.None;
+        }
+    }
+
+    private void ClearPick()
+    {
+        _pickedFileName = null;
+        _pickedBytes = null;
+        _confirmRestore = false;
+    }
+}

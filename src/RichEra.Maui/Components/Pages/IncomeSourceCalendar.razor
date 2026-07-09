@@ -1,0 +1,129 @@
+@page "/income/{Id:guid}/calendar"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@using RichEra.Maui.Components.Shared
+@inject IItemService ItemSvc
+@inject IIncomeProjectionService Projection
+
+<PageTitle>@(_source?.Name ?? "Recurring") — Calendar</PageTitle>
+
+<IncomeHeader Source="_source" ActiveTab="calendar" />
+
+@if (_source is null)
+{
+    <p class="muted-line"><em>Loading…</em></p>
+}
+else
+{
+    <div class="cal-nav">
+        <button class="nav-btn" @onclick="PrevMonth" aria-label="Previous month"><Icon Name="chevron-left" Size="18" /></button>
+        <div class="cal-month">@_cursor.ToString("MMMM yyyy")</div>
+        <button class="nav-btn" @onclick="NextMonth" aria-label="Next month"><Icon Name="chevron-right" Size="18" /></button>
+    </div>
+
+    <div class="cal-sum">
+        <div>
+            <div class="cal-sum-k">@(IsExpense ? "Paid" : "Received")</div>
+            <div class="cal-sum-v @(IsExpense ? "amt-exp" : "amt-inc")">@_receivedMonth.ToString("C")</div>
+        </div>
+        <div class="text-end">
+            <div class="cal-sum-k">Projected total</div>
+            <div class="cal-sum-v muted">@_projectedMonth.ToString("C")</div>
+        </div>
+    </div>
+
+    <div class="cal-card">
+        <div class="cal-grid cal-head">
+            <span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span>
+            <span>Thu</span><span>Fri</span><span>Sat</span>
+        </div>
+        <div class="cal-grid">
+            @foreach (var cell in _cells)
+            {
+                <div class="cal-cell @(cell.IsDim ? "dim" : "") @(cell.IsToday ? "today" : "")">
+                    <span class="num">@cell.Date.Day</span>
+                    @if (cell.Pay is ProjectedPaycheckDto pay)
+                    {
+                        <div class="@PillClass(pay)">
+                            @(IsExpense ? "−" : "+")$@(((pay.IsReceived ? pay.ActualAmount : pay.ProjectedAmount) ?? 0m).ToString("N0"))
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+        <div class="cal-legend">
+            <span><span class="@LegendClass(true)"></span>@(IsExpense ? "Paid" : "Received")</span>
+            <span><span class="@LegendClass(false)"></span>Projected</span>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ItemDto? _source;
+    private DateOnly _cursor = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private List<CalCell> _cells = new();
+    private decimal _receivedMonth;
+    private decimal _projectedMonth;
+
+    private bool IsExpense => _source?.Direction == TransactionDirection.Expense;
+
+    private string PillClass(ProjectedPaycheckDto pay) =>
+        "pay-pill" + (IsExpense ? " expense" : "") + (pay.IsReceived ? " received" : " projected");
+
+    private string LegendClass(bool received) =>
+        "legend-sw" + (IsExpense ? " expense" : "") + (received ? " received" : " projected");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _source = await ItemSvc.GetAsync(Id);
+        if (_source is null) return;
+        await BuildMonth();
+    }
+
+    private async Task BuildMonth()
+    {
+        if (_source is null) return;
+
+        var firstOfMonth = new DateOnly(_cursor.Year, _cursor.Month, 1);
+        var lastOfMonth = firstOfMonth.AddMonths(1).AddDays(-1);
+        var leading = (int)firstOfMonth.DayOfWeek; // Sun=0
+        var gridStart = firstOfMonth.AddDays(-leading);
+
+        var totalDays = leading + lastOfMonth.Day;
+        var rows = (int)Math.Ceiling(totalDays / 7.0);
+        var gridEnd = gridStart.AddDays(rows * 7 - 1);
+
+        var paychecks = (await Projection.GetPaychecksAsync(Id, gridStart, gridEnd)).ToList();
+        var payByDate = paychecks.ToDictionary(p => p.Date);
+
+        var monthPaychecks = paychecks.Where(p => p.Date >= firstOfMonth && p.Date <= lastOfMonth).ToList();
+        _receivedMonth = monthPaychecks.Where(p => p.IsReceived).Sum(p => p.ActualAmount ?? 0m);
+        _projectedMonth = monthPaychecks.Sum(p => p.IsReceived ? (p.ActualAmount ?? 0m) : p.ProjectedAmount);
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        _cells.Clear();
+        for (var i = 0; i < rows * 7; i++)
+        {
+            var d = gridStart.AddDays(i);
+            payByDate.TryGetValue(d, out var pay);
+            _cells.Add(new CalCell(d, d.Month != _cursor.Month, d == today, pay));
+        }
+    }
+
+    private async Task PrevMonth()
+    {
+        _cursor = _cursor.AddMonths(-1);
+        await BuildMonth();
+    }
+
+    private async Task NextMonth()
+    {
+        _cursor = _cursor.AddMonths(1);
+        await BuildMonth();
+    }
+
+    private record CalCell(DateOnly Date, bool IsDim, bool IsToday, ProjectedPaycheckDto? Pay);
+}

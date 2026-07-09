@@ -1,0 +1,42 @@
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+
+@if (Source is not null)
+{
+    <div class="pg-head">
+        <a class="back-chip" href="/income"><Icon Name="chevron-left" Size="16" /> Paychecks</a>
+        <ThemeToggle />
+    </div>
+
+    <div class="rule-hero">
+        <div class="tile @(IsExpense ? "tile--rose" : "tile--green")">
+            <Icon Name="@(IsExpense ? "receipt" : "briefcase")" />
+        </div>
+        <div class="rule-hero-body">
+            <div class="rule-hero-name">@Source.Name</div>
+            <div class="rule-hero-sub">@DescribeRule(Source) · base @Source.Amount.ToString("C") · @(IsExpense ? "from" : "into") @Source.AccountName</div>
+        </div>
+        <a class="rule-hero-edit" href="@($"/income/{Source.Id}/edit")" title="Edit rule"><Icon Name="pencil" Size="17" /></a>
+    </div>
+
+    <div class="seg-tabs">
+        <a class="seg-tab @(ActiveTab == "ledger" ? "active" : "")" href="@($"/income/{Source.Id}/ledger")">Ledger</a>
+        <a class="seg-tab @(ActiveTab == "calendar" ? "active" : "")" href="@($"/income/{Source.Id}/calendar")">Calendar</a>
+        <a class="seg-tab @(ActiveTab == "forecast" ? "active" : "")" href="@($"/income/{Source.Id}/forecast")">Forecast</a>
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public ItemDto? Source { get; set; }
+    [Parameter, EditorRequired] public string ActiveTab { get; set; } = "ledger";
+
+    private bool IsExpense => Source?.Direction == TransactionDirection.Expense;
+
+    private static string DescribeRule(ItemDto s) => (s.Frequency, s.StartDate) switch
+    {
+        (RepeatFrequency.Weekly, DateOnly d) => $"Weekly on {d.DayOfWeek}",
+        (RepeatFrequency.Biweekly, DateOnly d) => $"Biweekly on {d.DayOfWeek}",
+        (RepeatFrequency.Monthly, DateOnly d) => $"Monthly on day {d.Day}",
+        _ => "Recurring"
+    };
+}

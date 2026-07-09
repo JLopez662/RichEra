@@ -1,0 +1,49 @@
+.shop-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.back { border: 0; background: transparent; color: var(--text-muted); cursor: pointer; padding: 4px; }
+.cart-btn { position: relative; border: 0; background: transparent; color: var(--text); cursor: pointer; padding: 4px; }
+.cart-btn .badge { position: absolute; top: -2px; right: -4px; background: #F5C451; color: #3a2a06; font-size: 9px; font-weight: 700; border-radius: 999px; padding: 0 4px; min-width: 14px; text-align: center; }
+.loading { color: var(--text-muted); }
+
+.detail-img { height: 130px; border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 8px 0 10px; overflow: hidden; }
+.detail-img .n2f-ico { width: 48px; height: 48px; }
+.detail-img.rose { background: rgba(251,113,133,.14); color: #FB7185; }
+.detail-img.amber { background: rgba(245,196,81,.14); color: #F5C451; }
+.detail-img.green { background: rgba(74,222,128,.13); color: #4ADE80; }
+/* A real photo fills the rounded hero box; the tint just shows through during load. */
+.detail-img.has-photo { height: 180px; }
+.detail-img img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.photo-actions { display: flex; gap: 8px; margin: 0 0 14px; }
+.photo-btn { display: inline-flex; align-items: center; gap: 6px; background: var(--surface); border: 1px solid var(--border-strong); color: var(--text); border-radius: 999px; padding: 7px 14px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.photo-btn:hover { border-color: var(--accent-line); }
+.photo-btn:disabled { opacity: .5; cursor: default; }
+.photo-btn.ghost { background: transparent; color: var(--text-muted); }
+
+.dtitle { font-size: 19px; font-weight: 800; color: var(--text); }
+.dsub { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+
+/* Next-payment countdown — colour escalates as the date nears. */
+.due-row { margin: 11px 0 2px; }
+.due-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 6px 12px; font-size: 12.5px; font-weight: 700; }
+.due-pill .n2f-ico { width: 15px; height: 15px; }
+.due-date { font-weight: 600; opacity: .85; }
+.due-pill.due-rose { background: var(--rose-soft); color: var(--rose-ink); }
+.due-pill.due-amber { background: rgba(245,196,81,.16); color: #F5C451; }
+.due-pill.due-neutral { background: var(--surface-3); color: var(--text-muted); }
+.dinfo { font-size: 13px; color: var(--text); margin-top: 10px; background: var(--surface-3); border-radius: 10px; padding: 9px 12px; }
+
+.amt-field { margin: 16px 0; }
+.amt-field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin-bottom: 6px; }
+.amt-row { display: flex; align-items: center; gap: 4px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; padding: 10px 14px; }
+.amt-row .cur { font-size: 22px; font-weight: 700; color: var(--text-muted); }
+.amt-row input { flex: 1; background: transparent !important; border: 0 !important; outline: none !important; color: var(--text) !important; font-size: 26px !important; font-weight: 750; padding: 0 !important; }
+.err { color: var(--rose-ink); font-size: 13px; margin: 0 0 12px; }
+.hint { color: var(--text-muted); font-size: 12.5px; line-height: 1.45; margin: 0; }
+
+.fund-select { width: 100%; background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; padding: 11px 12px; color: var(--text); font-size: 14px; }
+
+.bigbuy:disabled { opacity: .5; cursor: not-allowed; }
+
+.bigbuy { display: block; width: 100%; background: #F5C451; color: #3a2a06; border: 0; border-radius: 999px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 9px; }
+.bigbuy.alt { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+.paysite { display: block; width: 100%; background: transparent; border: 1px dashed var(--border-strong); color: var(--text-muted); border-radius: 12px; padding: 11px; font-size: 12.5px; cursor: not-allowed; margin-top: 4px; }

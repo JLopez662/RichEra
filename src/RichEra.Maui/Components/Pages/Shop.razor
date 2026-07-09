@@ -1,0 +1,180 @@
+@page "/shop"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@using RichEra.Maui.Services
+@inject IItemService ItemSvc
+@inject IAccountService AccountSvc
+@inject ISavingsService SavingsSvc
+@inject IIncomeProjectionService Projection
+@inject IItemImageService ImageSvc
+@inject ShopCartState Cart
+@inject NavigationManager Nav
+
+<PageTitle>Pay shop</PageTitle>
+
+<div class="shop-bar">
+    <span class="logo">Pay<b>Day</b></span>
+    <button class="cart-btn" @onclick='() => Nav.NavigateTo("/shop/cart")' aria-label="Cart">
+        <Icon Name="shopping-cart" />
+        @if (Cart.Count > 0)
+        {
+            <span class="badge">@Cart.Count</span>
+        }
+    </button>
+</div>
+
+<p class="lede">Knock out your bills, cards, and savings like a shopping run. Ordering is a simulation — once you've actually paid, hit “Payment made” to log it.</p>
+
+@if (_loading)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else
+{
+    @if (_deals.Count > 0)
+    {
+        <div class="deals-head">Today's Deals</div>
+        <div class="deals-rail">
+            @foreach (var d in _deals)
+            {
+                <a class="deal @d.Tint" href="@d.Href">
+                    <span class="deal-ico"><Icon Name="@d.Icon" /></span>
+                    <span class="deal-title">@d.Title</span>
+                    <span class="deal-sub">@d.Sub</span>
+                    <span class="deal-amt">@d.Amount.ToString("C0")</span>
+                </a>
+            }
+        </div>
+    }
+
+    @if (_products.Count == 0)
+    {
+        <div class="empty">Nothing to pay right now. Add a recurring expense, a credit card, or a savings goal and it'll show up here.</div>
+    }
+    else
+    {
+        <div class="grid-head">All payments</div>
+        <div class="pgrid">
+            @foreach (var p in _products)
+            {
+                <a class="pcard" href="@p.Href">
+                    <div class="pimg @p.Tint">
+                        @{ var uri = ImageFor(p.Kind, p.Id); }
+                        @if (uri is not null)
+                        {
+                            <img src="@uri" alt="" />
+                        }
+                        else
+                        {
+                            <Icon Name="@p.Icon" />
+                        }
+                    </div>
+                    <div class="ptitle">@p.Title</div>
+                    <div class="pprice">@p.Headline</div>
+                    <div class="pmeta">@p.Meta</div>
+                    @{ var due = DueFor(p.Id); }
+                    @if (due is not null)
+                    {
+                        <span class="pdue @due.Value.Cls"><Icon Name="calendar" Size="12" /> @due.Value.Label</span>
+                    }
+                    <span class="pbuy">@(Cart.Contains(p.Kind, p.Id) ? "In cart ✓" : "View")</span>
+                </a>
+            }
+        </div>
+    }
+}
+
+@code {
+    private bool _loading = true;
+    private readonly List<Product> _products = new();
+    private readonly List<Deal> _deals = new();
+
+    // "{kind}:{ownerId}" -> data: URI, for the cards that have a user-supplied picture.
+    private Dictionary<string, string> _imageUris = new();
+
+    private string? ImageFor(ShopItemKind kind, Guid id)
+        => _imageUris.TryGetValue($"{kind.ToString().ToLowerInvariant()}:{id}", out var uri) ? uri : null;
+
+    // Expense id -> compact next-payment countdown (short label + urgency class).
+    private readonly Dictionary<Guid, (string Label, string Cls)> _due = new();
+    private (string Label, string Cls)? DueFor(Guid id) => _due.TryGetValue(id, out var d) ? d : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var expenses = await ItemSvc.ListAsync(direction: TransactionDirection.Expense);
+        var accounts = await AccountSvc.ListAsync();
+        var plan = await SavingsSvc.GetPlanAsync();
+
+        var images = await ImageSvc.ListAsync();
+        _imageUris = images.ToDictionary(i => $"{i.Kind}:{i.OwnerId}", i => i.DataUri);
+
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        foreach (var e in expenses)
+        {
+            _products.Add(new Product(ShopItemKind.Expense, e.Id, e.Name,
+                string.IsNullOrWhiteSpace(e.Icon) ? "receipt" : e.Icon!, "rose",
+                e.Amount.ToString("C"), $"{e.Frequency?.ToString() ?? "One-time"} · {e.AccountName}"));
+
+            if (await Projection.GetNextOccurrenceAsync(e.Id) is { } due)
+            {
+                var days = due.DayNumber - today.DayNumber;
+                var label = days <= 0 ? "Today" : days == 1 ? "1 day" : $"{days} days";
+                var cls = days <= 0 ? "due-rose" : days <= 3 ? "due-amber" : "due-neutral";
+                _due[e.Id] = (label, cls);
+            }
+        }
+
+        foreach (var a in accounts.Where(a => a.Type == AccountType.CreditCard))
+            _products.Add(new Product(ShopItemKind.Card, a.Id, a.Name, "credit-card", "amber",
+                a.CurrentBalance.ToString("C"), "card balance"));
+
+        if (plan.Goal is { } goal)
+            _products.Add(new Product(ShopItemKind.Savings, goal.Id, goal.Name, "piggy-bank", "green",
+                "Deposit", $"goal {goal.TargetAmount.ToString("C")}"));
+
+        await BuildDealsAsync(accounts, plan);
+
+        _loading = false;
+    }
+
+    // Today's Deals: the most pressing payments, blended from three signals. Best-effort —
+    // if the runway can't be computed we just skip the bill deals rather than break the page.
+    private async Task BuildDealsAsync(IReadOnlyList<AccountDto> accounts, SavingsPlanDto plan)
+    {
+        try
+        {
+            var runway = await Projection.GetRunwayAsync();
+            foreach (var ev in runway.Expenses.Take(3))
+            {
+                var days = ev.Date.DayNumber - runway.Today.DayNumber;
+                var when = days <= 0 ? "Due today" : days == 1 ? "Due tomorrow" : $"Due in {days} days";
+                _deals.Add(new Deal(ShopItemKind.Expense, ev.SourceId, ev.Name, when, ev.Amount, "rose", "receipt"));
+            }
+        }
+        catch { /* runway is optional polish */ }
+
+        // The card with the most owed (debt is stored as a negative balance).
+        var topCard = accounts
+            .Where(a => a.Type == AccountType.CreditCard && a.CurrentBalance < 0)
+            .OrderBy(a => a.CurrentBalance)
+            .FirstOrDefault();
+        if (topCard is not null)
+            _deals.Add(new Deal(ShopItemKind.Card, topCard.Id, topCard.Name, "Knock it down",
+                Math.Abs(topCard.CurrentBalance), "amber", "credit-card"));
+
+        // Savings nudge when there's still a gap to the target.
+        if (plan.Goal is { } g && plan.Remaining > 0m)
+            _deals.Add(new Deal(ShopItemKind.Savings, g.Id, g.Name, "Close the gap", plan.Remaining, "green", "piggy-bank"));
+    }
+
+    private sealed record Product(ShopItemKind Kind, Guid Id, string Title, string Icon, string Tint, string Headline, string Meta)
+    {
+        public string Href => $"/shop/item/{Kind.ToString().ToLowerInvariant()}/{Id}";
+    }
+
+    private sealed record Deal(ShopItemKind Kind, Guid Id, string Title, string Sub, decimal Amount, string Tint, string Icon)
+    {
+        public string Href => $"/shop/item/{Kind.ToString().ToLowerInvariant()}/{Id}";
+    }
+}

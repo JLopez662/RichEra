@@ -1,0 +1,49 @@
+.lede { color: var(--text-muted); font-size: 14px; margin: 0 0 18px; line-height: 1.45; }
+.alert { border-radius: var(--radius); }
+
+/* ===== CARDS ===== */
+.bk-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; box-shadow: var(--shadow-sm);
+}
+.bk-top { display: flex; align-items: flex-start; gap: 14px; }
+.bk-head { flex: 1; min-width: 0; }
+.bk-title { font-size: 15.5px; font-weight: 750; color: var(--text); }
+.bk-sub { font-size: 12.5px; color: var(--text-muted); margin-top: 4px; line-height: 1.5; }
+.bk-card .bk-sub { margin-bottom: 0; }
+.bk-card .bk-title + .bk-sub { margin-bottom: 14px; }
+
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; color: var(--accent-ink); background: var(--surface-3); padding: 1px 6px; border-radius: 6px; }
+
+/* status line under the auto-backup toggle */
+.bk-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-muted); margin-top: 14px; }
+.bk-status .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.bk-status .dot.ok { background: var(--accent); }
+.bk-status .dot.bad { background: var(--rose); }
+.bk-path { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-top: 8px; word-break: break-all; }
+.bk-path .n2f-ico { flex: 0 0 auto; color: var(--text-faint); }
+.bk-err { color: var(--rose-ink); font-size: 12.5px; margin: 8px 0 0; }
+
+/* ===== SWITCH ===== */
+.switch { flex: 0 0 auto; width: 48px; height: 28px; border-radius: 999px; background: var(--accent); position: relative; cursor: pointer; transition: background 0.15s; box-shadow: 0 4px 10px -3px var(--grad-shadow); }
+.switch::after { content: ""; position: absolute; top: 3px; right: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; transition: left 0.15s, right 0.15s; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+.switch.off { background: var(--border-strong); box-shadow: none; }
+.switch.off::after { right: auto; left: 3px; }
+
+/* ===== BUTTONS ===== */
+.bk-actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+.bk-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border-radius: 12px; padding: 11px 18px; font-size: 14px; font-weight: 700;
+    cursor: pointer; border: 1px solid var(--border);
+}
+.bk-btn:disabled { opacity: 0.5; cursor: default; }
+.bk-btn.primary { background: var(--grad); color: #06281f; border-color: transparent; box-shadow: 0 10px 22px -10px var(--grad-shadow); }
+.bk-btn.ghost { background: var(--surface-2); color: var(--text); }
+.bk-btn.danger { background: var(--danger-solid); color: #fff; border-color: var(--danger-solid); }
+
+/* ===== RESTORE PICK ===== */
+.bk-picked { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+.bk-picked-name { font-size: 13.5px; color: var(--text); margin: 0 0 10px; }
+.bk-confirm { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; color: var(--text); cursor: pointer; line-height: 1.4; }
+.bk-confirm input { margin-top: 2px; flex-shrink: 0; width: 17px; height: 17px; accent-color: var(--accent); }

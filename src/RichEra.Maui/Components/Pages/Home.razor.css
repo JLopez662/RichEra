@@ -1,0 +1,159 @@
+.loading { color: var(--text-muted); }
+
+/* ===== BALANCE HERO ===== */
+.hero {
+    position: relative;
+    overflow: hidden;
+    background: var(--hero-grad);
+    border-radius: var(--radius-lg);
+    padding: 20px 20px 18px;
+    color: #fff;
+    box-shadow: 0 20px 44px -22px var(--grad-shadow), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+}
+.hero::after {
+    content: "";
+    position: absolute; right: -40px; top: -60px;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.22), transparent 70%);
+    pointer-events: none;
+}
+.hero-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.80); }
+.hero-balance { font-size: 42px; font-weight: 800; letter-spacing: -0.02em; margin: 7px 0 0; line-height: 1; }
+.hero-sub {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 650; color: #eafff6;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 5px 11px 5px 9px; border-radius: 999px; margin-top: 13px;
+}
+/* Glass edit button pinned to the hero's corner — opens the total-balance sheet. */
+.hero-edit {
+    position: absolute; top: 13px; right: 13px; z-index: 1;
+    width: 34px; height: 34px; border-radius: 50%; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    color: #fff; cursor: pointer; -webkit-tap-highlight-color: transparent;
+    transition: transform 0.14s ease, background 0.2s ease;
+}
+.hero-edit:hover, .hero-edit:focus-visible { background: rgba(255, 255, 255, 0.26); }
+.hero-edit:active { transform: scale(0.88); }
+
+/* ===== THIS MONTH ===== */
+.month-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 13px 15px;
+    box-shadow: var(--shadow-sm);
+}
+.stat-k { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 7px; }
+.stat-k .pip { width: 8px; height: 8px; border-radius: 50%; }
+.pip.inc { background: var(--accent); }
+.pip.exp { background: var(--rose); }
+.stat-v { font-size: 21px; font-weight: 750; margin-top: 6px; letter-spacing: -0.01em; color: var(--text); }
+.stat-v.inc { color: var(--accent-ink); }
+
+.net {
+    grid-column: 1 / -1;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px 15px;
+    box-shadow: var(--shadow-sm);
+}
+.net-top { display: flex; align-items: baseline; justify-content: space-between; }
+.net-k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.net-v { font-size: 19px; font-weight: 750; }
+.net-v.pos { color: var(--accent-ink); }
+.net-v.neg { color: var(--rose-ink); }
+.flow {
+    height: 9px; border-radius: 6px; background: var(--track);
+    margin-top: 11px; display: flex; overflow: hidden;
+}
+.flow-in { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.flow-out { background: var(--rose); }
+.flow-meta { display: flex; justify-content: space-between; margin-top: 7px; font-size: 11px; color: var(--text-muted); }
+
+/* ===== NEXT PAYCHECK / EXPENSE ===== */
+.paycheck {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+    border-radius: var(--radius-lg);
+    padding: 15px 16px;
+    box-shadow: 0 1px 0 var(--inner-top) inset;
+}
+.paycheck-row { display: flex; align-items: center; gap: 14px; }
+.paycheck-body { flex: 1; min-width: 0; }
+.paycheck-t1 { font-size: 14.5px; font-weight: 700; color: var(--text); }
+.paycheck-t2 { font-size: 12px; color: var(--text-muted); margin-top: 2px; display: inline-flex; align-items: center; gap: 6px; }
+.paycheck-right { text-align: right; flex: 0 0 auto; }
+.paycheck-amt { font-size: 17px; font-weight: 800; color: var(--accent-ink); letter-spacing: -0.01em; }
+.paycheck-when { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.paycheck-bar {
+    height: 6px; border-radius: 4px; background: var(--track);
+    margin-top: 13px; overflow: hidden;
+}
+.paycheck-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    transition: width 0.3s ease;
+}
+.paycheck.expense { background: var(--rose-soft); border-color: var(--rose); }
+.paycheck.expense .paycheck-amt { color: var(--rose-ink); }
+.paycheck.expense .paycheck-bar-fill { background: linear-gradient(90deg, var(--rose), #f59e0b); }
+
+/* ===== RUNWAY TEASER ===== */
+.runway-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 15px;
+    box-shadow: var(--shadow-sm); cursor: pointer;
+}
+.runway-card:hover { border-color: var(--accent-line); }
+.rw-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.rw-sub { font-size: 13px; font-weight: 650; color: var(--text); }
+.rw-top .n2f-ico { color: var(--text-muted); flex-shrink: 0; }
+.rw-track { position: relative; height: 3px; background: var(--track); border-radius: 2px; margin: 16px 9px 0; }
+.rw-tick {
+    position: absolute; top: 50%; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--rose); transform: translate(-50%, -50%);
+}
+.rw-tick.start { background: var(--text-muted); }
+.rw-tick.pay { width: 13px; height: 13px; background: var(--accent); }
+.rw-foot { display: flex; justify-content: space-between; gap: 10px; margin-top: 12px; font-size: 11px; color: var(--text-muted); }
+.rw-foot .rw-pay { color: var(--accent-ink); font-weight: 650; text-align: right; }
+.rw-warn { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--rose-ink); margin-top: 11px; }
+
+/* ===== SAVINGS TEASER ===== */
+.savings-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 14px 15px;
+    box-shadow: var(--shadow-sm); cursor: pointer;
+}
+.savings-card:hover { border-color: var(--accent-line); }
+.sv-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sv-name { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 650; color: var(--text); }
+.sv-name .n2f-ico { color: var(--accent-ink); }
+.sv-pct { font-size: 14px; font-weight: 750; color: var(--accent-ink); }
+.sv-bar { height: 8px; border-radius: 5px; background: var(--track); overflow: hidden; margin: 11px 0 9px; }
+.sv-bar .f { height: 100%; border-radius: 5px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.sv-foot { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; color: var(--text-muted); }
+.sv-foot .sv-when { color: var(--accent-ink); font-weight: 600; }
+
+/* ===== ACCOUNTS ===== */
+.acct {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden;
+    box-shadow: var(--shadow-sm);
+}
+.acct-row {
+    display: flex; align-items: center; gap: 13px;
+    padding: 12px 14px; border-bottom: 1px solid var(--border);
+    cursor: pointer;
+}
+.acct-row:last-child { border-bottom: none; }
+.acct-row:hover { background: var(--surface-3); }
+.acct-name { font-size: 14.5px; font-weight: 650; color: var(--text); flex: 1; min-width: 0; }
+.acct-type {
+    font-size: 10.5px; font-weight: 600; color: var(--text-muted);
+    background: var(--surface-3); padding: 1px 7px; border-radius: 6px; margin-left: 6px;
+}
+.acct-bal { margin-left: auto; font-size: 15px; font-weight: 750; color: var(--text); }
+.acct-bal.neg { color: var(--rose-ink); }

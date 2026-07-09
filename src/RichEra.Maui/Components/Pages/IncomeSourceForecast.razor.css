@@ -1,0 +1,50 @@
+.muted-line { color: var(--text-muted); }
+.amt-inc { color: var(--accent-ink); }
+.amt-exp { color: var(--rose-ink); }
+
+/* ===== YEAR NAV ===== */
+.year-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 13px; }
+.year-nav .nav-btn {
+    width: 40px; height: 40px; border-radius: 13px; flex: 0 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--surface); border: 1px solid var(--border); color: var(--text-muted);
+    box-shadow: 0 1px 0 var(--inner-top) inset; cursor: pointer;
+}
+.year-nav .nav-btn:hover { border-color: var(--accent-line); color: var(--accent-ink); }
+.year-label { flex: 1; text-align: center; font-size: 19px; font-weight: 800; color: var(--text); }
+
+/* ===== YTD CARD ===== */
+.ytd-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px; margin-bottom: 4px; box-shadow: var(--shadow-sm);
+}
+.ytd-k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-muted); }
+.ytd-v { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; margin: 4px 0 12px; }
+.ytd-of { font-size: 13px; font-weight: 600; color: var(--text-muted); letter-spacing: 0; }
+.fc-bar { height: 10px; border-radius: 6px; background: var(--track); overflow: hidden; }
+.fc-bar-fill { height: 100%; border-radius: 6px; transition: width 0.3s ease; }
+.fc-bar-fill.inc { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.fc-bar-fill.exp { background: linear-gradient(90deg, var(--rose), #f59e0b); }
+.fc-meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: 11.5px; color: var(--text-muted); }
+
+/* ===== BREAKDOWN TABLE ===== */
+.bd-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+}
+.bd-card .table { margin: 0; }
+.bd-card .table thead th { font-size: 10.5px; }
+.badge-3 {
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 999px;
+    background: var(--amber-soft); color: var(--amber-ink); white-space: nowrap;
+}
+
+/* ===== THREE-PAYCHECK NOTE ===== */
+.threepay-note {
+    display: flex; gap: 13px; align-items: flex-start;
+    background: var(--amber-soft); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; margin-top: 14px;
+    font-size: 13px; line-height: 1.5; color: var(--text);
+}
+.threepay-note b { font-weight: 700; }
+.threepay-note .tile { width: 38px; height: 38px; }

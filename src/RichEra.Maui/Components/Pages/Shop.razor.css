@@ -1,0 +1,43 @@
+.shop-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.shop-bar .logo { font-size: 18px; font-weight: 800; color: var(--text); }
+.shop-bar .logo b { color: #F5C451; }
+.cart-btn { position: relative; border: 0; background: transparent; color: var(--text); cursor: pointer; padding: 4px; }
+.cart-btn .badge { position: absolute; top: -2px; right: -4px; background: #F5C451; color: #3a2a06; font-size: 9px; font-weight: 700; border-radius: 999px; padding: 0 4px; min-width: 14px; text-align: center; }
+
+.lede { color: var(--text-muted); font-size: 13px; line-height: 1.45; margin: 0 0 16px; }
+.loading { color: var(--text-muted); }
+.empty { color: var(--text-muted); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; font-size: 13.5px; line-height: 1.5; }
+
+.deals-head, .grid-head { font-size: 12px; font-weight: 750; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin: 2px 0 9px; }
+.grid-head { margin-top: 18px; }
+
+.deals-rail { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; margin: 0 -2px 4px; scrollbar-width: none; }
+.deals-rail::-webkit-scrollbar { display: none; }
+.deal { flex: 0 0 auto; width: 132px; text-decoration: none; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 11px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 2px; }
+.deal:hover { border-color: var(--accent-line); }
+.deal-ico { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px; }
+.deal-ico .n2f-ico { width: 18px; height: 18px; }
+.deal.rose .deal-ico { background: rgba(251,113,133,.16); color: #FB7185; }
+.deal.amber .deal-ico { background: rgba(245,196,81,.16); color: #F5C451; }
+.deal.green .deal-ico { background: rgba(74,222,128,.15); color: #4ADE80; }
+.deal-title { font-size: 12px; font-weight: 650; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.deal-sub { font-size: 10px; color: var(--text-muted); }
+.deal-amt { font-size: 15px; font-weight: 800; color: var(--text); margin-top: 2px; letter-spacing: -0.01em; }
+
+.pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 11px; }
+.pcard { display: block; min-width: 0; text-decoration: none; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 11px; box-shadow: var(--shadow-sm); }
+.pcard:hover { border-color: var(--accent-line); }
+.pimg { height: 52px; border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; overflow: hidden; }
+.pimg.rose { background: rgba(251,113,133,.16); color: #FB7185; }
+.pimg.amber { background: rgba(245,196,81,.16); color: #F5C451; }
+.pimg.green { background: rgba(74,222,128,.15); color: #4ADE80; }
+.pimg img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.ptitle { font-size: 12.5px; font-weight: 650; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pprice { font-size: 16px; font-weight: 800; color: var(--text); margin-top: 3px; letter-spacing: -0.01em; }
+.pmeta { font-size: 10.5px; color: var(--text-muted); margin-top: 1px; }
+/* Compact next-payment countdown on each expense card; colour escalates as it nears. */
+.pdue { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; border-radius: 999px; padding: 3px 8px; font-size: 10.5px; font-weight: 700; }
+.pdue.due-rose { background: var(--rose-soft); color: var(--rose-ink); }
+.pdue.due-amber { background: rgba(245,196,81,.16); color: #F5C451; }
+.pdue.due-neutral { background: var(--surface-3); color: var(--text-muted); }
+.pbuy { display: block; text-align: center; margin-top: 9px; background: #F5C451; color: #3a2a06; border-radius: 999px; padding: 7px; font-size: 11.5px; font-weight: 700; }

@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rich Era — Money Log concept</title>
+</head>
+<body>
+<style>
+  /* ============================================================
+     Rich Era — "Money Log" concept (Lose It!-style logging for money).
+     Phone frames use the app's real Midnight tokens from theme.css.
+     Gallery chrome follows the aurora-redesign.html precedent.
+     ============================================================ */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: #0a0e16; color: #e7ecf3; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    padding: 40px 16px 80px;
+    background-image:
+      radial-gradient(1000px 680px at 10% -10%, rgba(56,189,248,0.10), transparent 60%),
+      radial-gradient(1000px 680px at 92% 8%, rgba(167,139,250,0.10), transparent 60%),
+      radial-gradient(900px 700px at 50% 120%, rgba(16,185,129,0.08), transparent 60%);
+    overflow-x: hidden;
+  }
+  svg { display: block; }
+  button { font: inherit; color: inherit; cursor: pointer; background: none; border: none; }
+  a { color: inherit; }
+  :focus-visible { outline: 2px solid #38bdf8; outline-offset: 2px; border-radius: 6px; }
+
+  /* ============ GALLERY CHROME ============ */
+  .g-h1 {
+    font-size: clamp(26px, 5vw, 34px); font-weight: 800; letter-spacing: -0.02em; text-align: center;
+    background: linear-gradient(92deg, #34d399, #38bdf8 52%, #a78bfa);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    margin-bottom: 12px; text-wrap: balance;
+  }
+  .g-sub { text-align: center; max-width: 680px; margin: 0 auto 34px; font-size: 15px; line-height: 1.65; color: #9aa6b8; text-wrap: balance; }
+  .g-sub b { color: #cfd9e6; font-weight: 650; }
+
+  .sect { max-width: 1240px; margin: 0 auto; }
+  .sect + .sect { margin-top: 58px; }
+  .sect-bar { display: flex; align-items: baseline; gap: 14px; max-width: 980px; margin: 0 auto 6px; padding: 0 6px; }
+  .sect-bar .k { font-size: 12px; font-weight: 800; letter-spacing: .14em; color: #34d399; }
+  .sect-bar h2 { font-size: 20px; font-weight: 750; letter-spacing: -0.01em; color: #e7ecf3; }
+  .sect-bar .rule { flex: 1; height: 1px; background: linear-gradient(90deg, rgba(255,255,255,0.14), transparent); align-self: center; }
+  .sect-note { max-width: 980px; margin: 0 auto 22px; padding: 0 6px; font-size: 13.5px; line-height: 1.65; color: #8b98ab; }
+  .sect-note b { color: #c6d1df; font-weight: 650; }
+
+  .frames { display: flex; flex-wrap: wrap; gap: 34px; justify-content: center; align-items: flex-start; }
+  .fcol { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+  .fcap { font-size: 12.5px; font-weight: 650; color: #aeb9ca; margin-bottom: 13px; letter-spacing: 0.01em; display: inline-flex; gap: 8px; align-items: center; }
+  .fcap i { width: 10px; height: 10px; border-radius: 50%; box-shadow: 0 0 0 3px rgba(255,255,255,0.06); }
+  .fnote { max-width: 372px; margin-top: 13px; font-size: 12.5px; line-height: 1.6; color: #7f8ca0; }
+  .fnote b { color: #b9c5d4; font-weight: 650; }
+
+  /* ============ PHONE FRAME ============ */
+  .phone {
+    position: relative; width: 392px; max-width: 100%; border-radius: 46px; padding: 11px;
+    background: linear-gradient(160deg, #1c2230, #0e1320);
+    box-shadow: 0 0 0 2px rgba(255,255,255,0.04), 0 36px 72px -24px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.05);
+  }
+  .screen {
+    position: relative; border-radius: 36px; overflow: hidden;
+    height: 838px; background: var(--bg); color: var(--text);
+  }
+  .notch { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 148px; height: 28px; background: #05070c; border-radius: 0 0 18px 18px; z-index: 60; }
+  .screen::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+    background-image:
+      radial-gradient(640px 440px at 6% -6%, var(--bloom-a), transparent 62%),
+      radial-gradient(640px 480px at 96% 102%, var(--bloom-b), transparent 60%);
+  }
+  .pad { position: relative; z-index: 1; height: 100%; overflow: hidden; padding: 46px 15px 100px; }
+
+  /* Midnight (dark) tokens — mirrors theme.css */
+  .dark {
+    --bg: #0b0f17;
+    --bloom-a: rgba(56,189,248,0.13); --bloom-b: rgba(167,139,250,0.14);
+    --text: #e9eef6; --text-muted: #97a3b6; --text-faint: #6c7889;
+    --surface: rgba(22,29,43,0.74); --surface-2: rgba(30,39,56,0.60); --surface-3: rgba(255,255,255,0.06);
+    --surface-solid: #121b2e;
+    --border: rgba(255,255,255,0.11); --border-strong: rgba(255,255,255,0.20);
+    --inner-top: rgba(255,255,255,0.06);
+    --accent: #34d399; --accent-2: #38bdf8; --accent-ink: #6ee7b7;
+    --accent-soft: rgba(52,211,153,0.16); --accent-line: rgba(52,211,153,0.32);
+    --grad: linear-gradient(96deg, #34d399, #22d3ee); --grad-shadow: rgba(34,211,238,0.38);
+    --blue-soft: rgba(56,189,248,0.16); --blue-ink: #7dd3fc;
+    --violet-soft: rgba(167,139,250,0.18); --violet-ink: #c4b5fd;
+    --amber-soft: rgba(251,191,36,0.16); --amber-ink: #fcd34d;
+    --slate-soft: rgba(148,163,184,0.15); --slate-ink: #cbd5e1;
+    --rose: #fb7185; --rose-soft: rgba(251,113,133,0.16); --rose-ink: #fda4af;
+    --track: rgba(255,255,255,0.10); --nav-bg: rgba(18,27,46,0.90); --field-bg: #0c1424;
+    /* Money-macro palette (new tokens this concept introduces) */
+    --m-needs: #38bdf8; --m-wants: #fbbf24; --m-debt: #fb7185; --m-future: #34d399;
+  }
+
+  /* ============ SHARED APP ATOMS (from theme.css vocabulary) ============ */
+  .pg-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 15px; gap: 12px; }
+  .pg-title { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; }
+  .wordmark { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+  .wordmark b { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .iconbtn {
+    width: 37px; height: 37px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    background: var(--surface); color: var(--accent-ink); border: 1px solid var(--border);
+    box-shadow: 0 1px 0 var(--inner-top) inset;
+  }
+  .iconbtn svg { width: 16px; height: 16px; }
+  .eyebrow { display: flex; align-items: center; justify-content: space-between; font-size: 10.5px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--text-faint); margin: 19px 6px 8px; }
+  .eyebrow .lnk { font-size: 12px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-faint); }
+  .glass {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+    box-shadow: 0 1px 0 var(--inner-top) inset, 0 14px 30px -22px rgba(0,0,0,.75);
+  }
+  .tile { flex: 0 0 auto; width: 41px; height: 41px; border-radius: 13px; display: flex; align-items: center; justify-content: center; }
+  .tile svg { width: 20px; height: 20px; }
+  .t-green  { background: var(--accent-soft); color: var(--accent-ink); }
+  .t-blue   { background: var(--blue-soft);   color: var(--blue-ink); }
+  .t-violet { background: var(--violet-soft); color: var(--violet-ink); }
+  .t-amber  { background: var(--amber-soft);  color: var(--amber-ink); }
+  .t-rose   { background: var(--rose-soft);   color: var(--rose-ink); }
+  .t-slate  { background: var(--slate-soft);  color: var(--slate-ink); }
+  .pill { font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .p-ok    { background: var(--accent-soft); color: var(--accent-ink); }
+  .p-info  { background: var(--blue-soft);   color: var(--blue-ink); }
+  .p-warn  { background: var(--amber-soft);  color: var(--amber-ink); }
+  .p-bad   { background: var(--rose-soft);   color: var(--rose-ink); }
+  .p-mut   { background: var(--surface-3);   color: var(--text-muted); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Grade chip — the "food grade" analog */
+  .grade { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 7px; font-size: 12px; font-weight: 800; }
+  .gA { background: var(--accent-soft); color: var(--accent-ink); }
+  .gB { background: var(--blue-soft); color: var(--blue-ink); }
+  .gC { background: var(--amber-soft); color: var(--amber-ink); }
+  .gD { background: var(--rose-soft); color: var(--rose-ink); }
+
+  /* ============ BOTTOM TAB BAR (proposed: Log + Library) ============ */
+  .tabs {
+    position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 50;
+    display: flex; align-items: center; justify-content: space-between;
+    background: var(--nav-bg); border: 1px solid var(--border); border-radius: 26px;
+    padding: 8px 10px; backdrop-filter: blur(10px);
+    box-shadow: 0 1px 0 var(--inner-top) inset, 0 18px 34px -18px rgba(0,0,0,.8);
+  }
+  .tabs .grp { display: flex; flex: 1; justify-content: space-around; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--text-faint); font-size: 10px; font-weight: 650; padding: 3px 8px; }
+  .tab svg { width: 21px; height: 21px; }
+  .tab.on { color: var(--accent-ink); }
+  .fab {
+    width: 54px; height: 54px; border-radius: 50%; margin: -26px 8px 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--grad); color: #04261c;
+    box-shadow: 0 12px 26px -8px var(--grad-shadow), 0 2px 0 rgba(255,255,255,.25) inset;
+  }
+  .fab svg { width: 24px; height: 24px; }
+
+  /* ============ LOG PAGE ============ */
+  .daynav { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 2px 0 13px; }
+  .daynav .step { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-muted); }
+  .daynav .step svg { width: 17px; height: 17px; }
+  .daynav .lab { font-size: 15.5px; font-weight: 750; padding: 6px 14px; border-radius: 999px; display: flex; gap: 6px; align-items: center; }
+  .daynav .lab svg { width: 14px; height: 14px; color: var(--text-faint); }
+
+  .budget-hero { padding: 15px 16px 14px; }
+  .bh-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .bh-title { font-size: 12.5px; font-weight: 700; color: var(--text-muted); }
+  .bh-title b { color: var(--text); font-weight: 800; }
+  .bh-gear { color: var(--text-faint); } .bh-gear svg { width: 16px; height: 16px; }
+  .bh-mid { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; }
+  .bh-stat { text-align: center; }
+  .bh-stat .k { font-size: 11.5px; color: var(--text-muted); font-weight: 650; margin-bottom: 2px; }
+  .bh-stat .v { font-size: 16.5px; font-weight: 800; letter-spacing: -0.01em; }
+  .bh-stat .v.in { color: var(--accent-ink); }
+  .ring { position: relative; width: 148px; height: 148px; }
+  .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring .c-track { stroke: var(--track); }
+  .ring .c-val { stroke-linecap: round; }
+  .ring-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .ring-center .big { font-size: 26px; font-weight: 800; letter-spacing: -0.02em; }
+  .ring-center .big.neg { color: var(--rose); }
+  .ring-center .sml { font-size: 11px; font-weight: 650; color: var(--text-muted); margin-top: 1px; }
+  .macro { margin-top: 12px; }
+  .macro-legend { display: flex; gap: 12px; justify-content: center; font-size: 11px; font-weight: 650; color: var(--text-muted); margin-bottom: 7px; flex-wrap: wrap; }
+  .macro-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
+  .macro-bar { display: flex; height: 8px; border-radius: 99px; overflow: hidden; background: var(--track); }
+  .macro-bar span { height: 100%; }
+  .m-needs { background: var(--m-needs); } .m-wants { background: var(--m-wants); }
+  .m-debt { background: var(--m-debt); } .m-future { background: var(--m-future); }
+
+  .meal { margin-bottom: 12px; overflow: hidden; }
+  .meal-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; }
+  .meal-head .mtile { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .meal-head .mtile svg { width: 15px; height: 15px; }
+  .meal-head .t { flex: 1; font-size: 14px; font-weight: 750; }
+  .meal-head .t small { display: block; font-size: 11px; font-weight: 600; color: var(--text-faint); }
+  .meal-head .sum { font-size: 14px; font-weight: 800; }
+  .meal-head .sum.in { color: var(--accent-ink); }
+  .meal-rows { border-top: 1px solid var(--border); }
+  .lrow { display: flex; align-items: center; gap: 10px; padding: 9px 14px; }
+  .lrow + .lrow { border-top: 1px solid var(--border); }
+  .lrow .tile { width: 34px; height: 34px; border-radius: 11px; }
+  .lrow .tile svg { width: 17px; height: 17px; }
+  .lrow .body { flex: 1; min-width: 0; }
+  .lrow .n { font-size: 13.5px; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lrow .s { font-size: 11px; color: var(--text-faint); font-weight: 600; }
+  .lrow .amt { font-size: 13.5px; font-weight: 750; }
+  .lrow .amt.in { color: var(--accent-ink); }
+  .addrow { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px dashed var(--border); color: var(--accent-ink); font-size: 12.5px; font-weight: 700; }
+  .addrow svg { width: 15px; height: 15px; }
+
+  /* A2 — envelope variant */
+  .flowcard { padding: 15px 16px; }
+  .fc-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
+  .fc-big { font-size: 25px; font-weight: 800; letter-spacing: -0.02em; }
+  .fc-big small { font-size: 13px; color: var(--text-muted); font-weight: 650; }
+  .fc-chip { font-size: 11px; font-weight: 750; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); }
+  .stackbar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--track); margin-bottom: 8px; }
+  .stackbar span { height: 100%; }
+  .fc-foot { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-faint); font-weight: 600; }
+  .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .env { padding: 12px 13px; border-radius: 17px; }
+  .env .eh { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 750; margin-bottom: 7px; }
+  .env .eh i { width: 8px; height: 8px; border-radius: 50%; }
+  .env .ev { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+  .env .ev small { font-size: 11px; color: var(--text-faint); font-weight: 600; }
+  .env .ebar { height: 6px; border-radius: 99px; background: var(--track); margin-top: 8px; overflow: hidden; }
+  .env .ebar span { display: block; height: 100%; border-radius: 99px; }
+  .env .emeta { font-size: 10.5px; color: var(--text-faint); font-weight: 600; margin-top: 6px; }
+  .env .emeta.over { color: var(--rose-ink); }
+
+  /* ============ MONEY FACTS LABEL — the signature element ============ */
+  .facts { padding: 15px 16px 13px; }
+  .facts-h { font-size: 21px; font-weight: 900; letter-spacing: -0.01em; display: flex; justify-content: space-between; align-items: center; }
+  .facts-h .edit { font-size: 12px; font-weight: 700; color: var(--accent-ink); letter-spacing: 0; }
+  .f-serving { display: flex; justify-content: space-between; font-size: 13px; font-weight: 650; color: var(--text-muted); padding: 7px 0 8px; }
+  .f-serving b { color: var(--text); font-weight: 750; }
+  .rule-xl { height: 5px; background: var(--border-strong); border-radius: 2px; }
+  .rule-md { height: 2.5px; background: var(--border-strong); border-radius: 2px; }
+  .rule-sm { height: 1px; background: var(--border); }
+  .f-impact { padding: 9px 0 10px; display: flex; align-items: baseline; justify-content: space-between; }
+  .f-impact .k { font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+  .f-impact .v { font-size: 31px; font-weight: 850; letter-spacing: -0.02em; }
+  .f-impact .v.out { color: var(--rose); }
+  .f-impact .v.in { color: var(--accent-ink); }
+  .f-colhead { display: flex; justify-content: flex-end; font-size: 10px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; color: var(--text-faint); padding: 6px 0 3px; }
+  .frow { display: flex; align-items: baseline; gap: 8px; padding: 6.5px 0; font-size: 13px; }
+  .frow + .frow { border-top: 1px solid var(--border); }
+  .frow .k { flex: 1; font-weight: 750; }
+  .frow .k small { display: block; font-size: 10.5px; font-weight: 600; color: var(--text-faint); }
+  .frow.ind .k { padding-left: 14px; font-weight: 600; color: var(--text-muted); }
+  .frow .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .frow .pct { width: 48px; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .frow .pct.warn { color: var(--rose-ink); }
+  .frow .pct.mut { color: var(--text-faint); font-weight: 650; }
+  .f-sect { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); padding: 9px 0 3px; }
+  .f-note { font-size: 10.5px; color: var(--text-faint); line-height: 1.5; padding-top: 8px; }
+  .planbar { height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; margin: 4px 0 2px; }
+  .planbar span { display: block; height: 100%; background: var(--grad); border-radius: 99px; }
+
+  /* Item detail chrome around the label */
+  .d-head { display: flex; align-items: center; gap: 12px; margin: 4px 2px 13px; }
+  .d-ic { width: 52px; height: 52px; border-radius: 16px; display: flex; align-items: center; justify-content: center; }
+  .d-ic svg { width: 25px; height: 25px; }
+  .d-name { flex: 1; min-width: 0; }
+  .d-name .t { font-size: 17.5px; font-weight: 800; letter-spacing: -0.01em; }
+  .d-name .b { font-size: 12px; color: var(--text-muted); font-weight: 600; }
+  .backchip { display: inline-flex; align-items: center; gap: 3px; height: 34px; padding: 0 12px 0 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); font-size: 12.5px; font-weight: 650; margin-bottom: 12px; }
+  .backchip svg { width: 15px; height: 15px; }
+  .optrow { display: flex; align-items: center; gap: 10px; padding: 11px 14px; font-size: 13px; font-weight: 650; }
+  .optrow + .optrow { border-top: 1px solid var(--border); }
+  .optrow svg { width: 16px; height: 16px; color: var(--text-muted); }
+  .optrow .arr { margin-left: auto; color: var(--text-faint); }
+
+  /* Bottom log bar (inside phone) */
+  .logbar {
+    position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 50;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--nav-bg); border: 1px solid var(--border); border-radius: 22px; padding: 9px 10px;
+    backdrop-filter: blur(10px); box-shadow: 0 18px 34px -18px rgba(0,0,0,.8);
+  }
+  .logbar .qty { width: 52px; text-align: center; font-size: 16px; font-weight: 800; padding: 8px 0; border-radius: 13px; background: var(--field-bg); border: 1px solid var(--border); }
+  .logbar .unit { display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; padding: 9px 12px; border-radius: 13px; background: var(--field-bg); border: 1px solid var(--border); }
+  .logbar .unit svg { width: 13px; height: 13px; color: var(--text-faint); }
+  .logbar .go { flex: 1; text-align: center; padding: 11px 8px; border-radius: 15px; background: var(--grad); color: #04261c; font-size: 13.5px; font-weight: 800; box-shadow: 0 10px 22px -10px var(--grad-shadow); }
+
+  /* ============ LIBRARY ============ */
+  .search { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding: 10px 14px; color: var(--text-faint); font-size: 13.5px; }
+  .search svg { width: 16px; height: 16px; }
+  .libtabs { display: flex; gap: 4px; margin: 13px 0 6px; border-bottom: 1px solid var(--border); }
+  .libtab { padding: 8px 11px 9px; font-size: 13px; font-weight: 700; color: var(--text-faint); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .libtab.on { color: var(--text); border-color: var(--accent); }
+  .rail { display: flex; gap: 9px; overflow: hidden; margin: 12px 0 2px; }
+  .dealc { flex: 0 0 128px; padding: 11px 12px; border-radius: 16px; }
+  .dealc .dt { font-size: 11.5px; font-weight: 750; margin: 7px 0 1px; }
+  .dealc .ds { font-size: 10px; font-weight: 650; opacity: .75; }
+  .dealc .da { font-size: 14.5px; font-weight: 800; margin-top: 3px; }
+  .dealc .mtile { width: 26px; height: 26px; border-radius: 9px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,.10); }
+  .dealc .mtile svg { width: 14px; height: 14px; }
+  .dl-rose { background: linear-gradient(140deg, rgba(251,113,133,.22), rgba(251,113,133,.07)); color: var(--rose-ink); border: 1px solid rgba(251,113,133,.25); }
+  .dl-amber { background: linear-gradient(140deg, rgba(251,191,36,.20), rgba(251,191,36,.06)); color: var(--amber-ink); border: 1px solid rgba(251,191,36,.22); }
+  .dl-green { background: linear-gradient(140deg, rgba(52,211,153,.20), rgba(52,211,153,.06)); color: var(--accent-ink); border: 1px solid rgba(52,211,153,.24); }
+  .librow { display: flex; align-items: center; gap: 11px; padding: 10px 13px; }
+  .librow + .librow { border-top: 1px solid var(--border); }
+  .librow .body { flex: 1; min-width: 0; }
+  .librow .n { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+  .librow .s { font-size: 11.5px; color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+  .librow .plus { width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--surface-3); color: var(--accent-ink); border: 1px solid var(--border); }
+  .librow .plus svg { width: 16px; height: 16px; }
+  /* Lose It-style quick-log capsule mid-tap */
+  .quickcap { display: flex; align-items: center; gap: 6px; }
+  .quickcap .qbtn { height: 34px; padding: 0 11px; border-radius: 999px; background: var(--amber-soft); color: var(--amber-ink); display: flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 800; border: 1px solid rgba(251,191,36,.25); }
+  .quickcap .qbtn svg { width: 15px; height: 15px; }
+  .quickcap .qgo { width: 40px; height: 40px; border-radius: 50%; background: var(--grad); color: #04261c; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 18px -8px var(--grad-shadow); }
+  .quickcap .qgo svg { width: 18px; height: 18px; }
+
+  /* Storefront variant */
+  .shopbar { display: flex; justify-content: space-between; align-items: center; margin: 0 2px 13px; }
+  .cartbtn { position: relative; width: 37px; height: 37px; border-radius: 50%; background: var(--surface); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; color: var(--text); }
+  .cartbtn svg { width: 17px; height: 17px; }
+  .cartbtn .b { position: absolute; top: -4px; right: -4px; min-width: 17px; height: 17px; border-radius: 99px; background: var(--grad); color: #04261c; font-size: 10px; font-weight: 800; display: flex; align-items: center; justify-content: center; padding: 0 4px; }
+  .pgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pcard { padding: 11px; border-radius: 18px; position: relative; }
+  .pimg { height: 74px; border-radius: 13px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px; }
+  .pimg svg { width: 27px; height: 27px; }
+  .ptitle { font-size: 13px; font-weight: 750; line-height: 1.25; }
+  .pprice { font-size: 13.5px; font-weight: 800; margin-top: 2px; }
+  .pmeta { font-size: 10.5px; color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+  .pdue { display: inline-flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 750; padding: 3px 8px; border-radius: 99px; margin-top: 7px; }
+  .pdue svg { width: 11px; height: 11px; }
+  .pbuy { display: block; text-align: center; font-size: 11.5px; font-weight: 800; margin-top: 8px; padding: 7px 0; border-radius: 12px; background: var(--surface-3); color: var(--accent-ink); border: 1px solid var(--border); }
+
+  /* ============ EDITOR ============ */
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 11px; font-weight: 750; letter-spacing: .07em; text-transform: uppercase; color: var(--text-faint); margin: 0 4px 6px; }
+  .input { width: 100%; padding: 11px 13px; border-radius: 14px; background: var(--field-bg); border: 1px solid var(--border); font-size: 14px; font-weight: 650; color: var(--text); }
+  .input.mut { color: var(--text-faint); font-weight: 600; }
+  .seg { display: flex; background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 3px; gap: 3px; }
+  .seg button { flex: 1; padding: 8px 6px; border-radius: 11px; font-size: 12.5px; font-weight: 750; color: var(--text-muted); }
+  .seg .on { background: var(--surface-solid); color: var(--text); box-shadow: 0 2px 8px -4px rgba(0,0,0,.6); }
+  .seg .on.exp { color: var(--rose-ink); } .seg .on.inc { color: var(--accent-ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 7px 11px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12px; font-weight: 700; color: var(--text-muted); }
+  .chip svg { width: 13px; height: 13px; }
+  .chip.on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .photo-sq { width: 74px; height: 74px; border-radius: 18px; background: var(--surface-2); border: 1px dashed var(--border-strong); display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; color: var(--text-faint); font-size: 9.5px; font-weight: 700; }
+  .photo-sq svg { width: 20px; height: 20px; }
+  .autofill {
+    position: absolute; right: 22px; bottom: 96px; z-index: 55;
+    display: flex; align-items: center; gap: 8px; padding: 11px 16px; border-radius: 999px;
+    background: linear-gradient(120deg, #fbd3ac, #f8b98a); color: #4a2c12; font-size: 13.5px; font-weight: 800;
+    box-shadow: 0 14px 30px -12px rgba(248,185,138,.55);
+  }
+  .autofill svg { width: 17px; height: 17px; }
+  .microhead { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 8px; }
+  .microhead .t { font-size: 13px; font-weight: 800; }
+  .microhead .s { font-size: 10.5px; color: var(--text-faint); font-weight: 650; }
+
+  /* ============ IA SECTION ============ */
+  .ia-wrap { max-width: 980px; margin: 0 auto; display: grid; gap: 14px; }
+  .ia-card { background: rgba(22,29,43,.55); border: 1px solid rgba(255,255,255,.09); border-radius: 20px; padding: 18px 20px; }
+  .ia-card h3 { font-size: 14.5px; font-weight: 800; margin-bottom: 10px; color: #dbe4ef; }
+  .ia-card h3 span { color: #34d399; }
+  .ia-tabs { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .ia-tab { display: inline-flex; align-items: center; gap: 6px; padding: 8px 13px; border-radius: 999px; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.10); font-size: 12.5px; font-weight: 700; color: #aeb9ca; }
+  .ia-tab.new { background: rgba(52,211,153,.13); border-color: rgba(52,211,153,.3); color: #6ee7b7; }
+  .ia-tab.gone { text-decoration: line-through; opacity: .5; }
+  .ia-tab svg { width: 14px; height: 14px; }
+  .ia-arrow { color: #5b6678; font-weight: 800; }
+  .merge { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 10px; padding: 9px 0; font-size: 13px; }
+  .merge + .merge { border-top: 1px solid rgba(255,255,255,.07); }
+  .merge .from { color: #93a1b5; font-weight: 650; text-align: right; }
+  .merge .from small, .merge .to small { display: block; font-size: 11px; color: #64748b; font-weight: 600; }
+  .merge .to { font-weight: 750; color: #dbe4ef; }
+  .merge .to b { color: #6ee7b7; }
+  .phase { display: flex; gap: 12px; padding: 10px 0; }
+  .phase + .phase { border-top: 1px solid rgba(255,255,255,.07); }
+  .phase .pn { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 9px; background: rgba(52,211,153,.14); color: #6ee7b7; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+  .phase .pb b { display: block; font-size: 13.5px; color: #dbe4ef; margin-bottom: 2px; }
+  .phase .pb { font-size: 12.5px; color: #8b98ab; line-height: 1.55; }
+
+  /* Mapping table */
+  .map { max-width: 780px; margin: 0 auto; background: rgba(22,29,43,.55); border: 1px solid rgba(255,255,255,.09); border-radius: 20px; overflow: hidden; }
+  .map .mrow { display: grid; grid-template-columns: 1fr 26px 1.25fr; align-items: center; gap: 8px; padding: 9.5px 18px; font-size: 13px; }
+  .map .mrow + .mrow { border-top: 1px solid rgba(255,255,255,.06); }
+  .map .mrow.head { background: rgba(255,255,255,.04); font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #7f8ca0; }
+  .map .l { color: #93a1b5; font-weight: 600; }
+  .map .a { color: #475569; font-weight: 800; text-align: center; }
+  .map .r { color: #e2e9f2; font-weight: 700; }
+  .map .r small { display: block; font-size: 11px; font-weight: 600; color: #64748b; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .pcard, .librow, .ia-tab { transition: border-color .18s ease; }
+  }
+  @media (max-width: 430px) {
+    body { padding: 28px 10px 60px; }
+    .phone { border-radius: 38px; padding: 8px; }
+    .screen { border-radius: 30px; }
+  }
+</style>
+
+<h1 class="g-h1">Rich Era — the Money Log</h1>
+<p class="g-sub">
+  Lose It!'s loop, transplanted to money: a <b>budget ring</b> you log against, a <b>library of reusable
+  money items</b> with a <b>Money Facts</b> label (macros = Needs / Wants / Debt / Future, micros = APR,
+  ROI, compounding, payment plans), and <b>bundles</b> that log several items at once.
+  All frames use the app's real Midnight tokens.
+</p>
+
+<!-- ============ MAPPING ============ -->
+<div class="sect">
+  <div class="sect-bar"><span class="k">00</span><h2>The translation</h2><div class="rule"></div></div>
+  <p class="sect-note">Every mechanic that makes food logging sticky has a one-to-one money equivalent. The two clever ones: <b>% Daily Value → % of monthly budget</b>, and <b>exercise earning calories back → income earning budget back</b>.</p>
+  <div class="map">
+    <div class="mrow head"><span>Lose It!</span><span></span><span>Rich Era</span></div>
+    <div class="mrow"><span class="l">Calorie</span><span class="a">→</span><span class="r">Dollar</span></div>
+    <div class="mrow"><span class="l">Daily calorie budget</span><span class="a">→</span><span class="r">Monthly spend budget <small>projected income − savings target (pay-yourself-first)</small></span></div>
+    <div class="mrow"><span class="l">Food eaten</span><span class="a">→</span><span class="r">Money out (expense)</span></div>
+    <div class="mrow"><span class="l">Exercise (earns calories back)</span><span class="a">→</span><span class="r">Money in (earns budget back)</span></div>
+    <div class="mrow"><span class="l">Food in “My Foods”</span><span class="a">→</span><span class="r">Money item in your Library <small>“Netflix”, “Rent”, “Gas — Shell”, “Paycheck”, “Index fund buy”</small></span></div>
+    <div class="mrow"><span class="l">Brand (Oscar Mayer)</span><span class="a">→</span><span class="r">Counterparty <small>Netflix Inc. · landlord · employer</small></span></div>
+    <div class="mrow"><span class="l">Serving (1 slice = 28 g)</span><span class="a">→</span><span class="r">Unit (1 month, 1 payment, 1 visit, 1 tank)</span></div>
+    <div class="mrow"><span class="l">Meals (Breakfast / Lunch…)</span><span class="a">→</span><span class="r">Money groups <small>Bills &amp; debt · Living · Fun · Future you · Money in</small></span></div>
+    <div class="mrow"><span class="l">Macros (protein / carbs / fat)</span><span class="a">→</span><span class="r">Needs / Wants / Debt / Future split <small>the 50-30-20 rule is literally a macro target</small></span></div>
+    <div class="mrow"><span class="l">Micros (vitamins &amp; minerals)</span><span class="a">→</span><span class="r">APR, compounding, ROI, term, fees, tax <small>n/a when it doesn't apply — same as the label</small></span></div>
+    <div class="mrow"><span class="l">% Daily Value</span><span class="a">→</span><span class="r">% of monthly budget</span></div>
+    <div class="mrow"><span class="l">Nutrition Facts label</span><span class="a">→</span><span class="r">Money Facts label</span></div>
+    <div class="mrow"><span class="l">Recipes (multi-ingredient)</span><span class="a">→</span><span class="r">Bundles <small>“Costco run”, “Payday routine” — reuses the Shop cart</small></span></div>
+    <div class="mrow"><span class="l">Food grades (A–D)</span><span class="a">→</span><span class="r">Money grades <small>A invest · B need · C want · D high-interest debt</small></span></div>
+    <div class="mrow"><span class="l">Weigh-ins &amp; weight trend</span><span class="a">→</span><span class="r">Balance check-ins &amp; net-worth trend <small>the TotalBalanceSheet quick-reconcile is already the weigh-in</small></span></div>
+    <div class="mrow"><span class="l">Barcode scanner</span><span class="a">→</span><span class="r">OFX import mapped to items <small>receipt scan later</small></span></div>
+  </div>
+</div>
+<!-- ============ A — THE LOG ============ -->
+<div class="sect">
+  <div class="sect-bar"><span class="k">A</span><h2>The Log — Activity, rebuilt as a diary</h2><div class="rule"></div></div>
+  <p class="sect-note">The existing Transactions page becomes the <b>Log</b>: day-paged like meals, entries grouped into money groups with subtotals. The budget ring reads on a <b>monthly</b> cycle (money's natural period) and derives a per-day allowance. Logging income mid-month earns budget back — the exercise mechanic.</p>
+  <div class="frames">
+
+    <!-- A1: ring hero -->
+    <div class="fcol">
+      <div class="fcap"><i style="background:#34d399"></i>A1 · Budget ring + money groups (the Lose It layout)</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <div class="pg-head">
+          <div class="pg-title">Log</div>
+          <span class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></span>
+        </div>
+
+        <div class="daynav">
+          <span class="step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+          <span class="lab glass">Wed, Jul 8 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </div>
+
+        <div class="budget-hero glass">
+          <div class="bh-top">
+            <span class="bh-title">July budget · <b class="num">$2,400</b></span>
+            <span class="bh-gear"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg></span>
+          </div>
+          <div class="bh-mid">
+            <div class="bh-stat"><div class="k">Money out</div><div class="v num">$1,733</div></div>
+            <div class="ring">
+              <svg viewBox="0 0 160 160">
+                <defs><linearGradient id="rg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#34d399"/><stop offset="1" stop-color="#22d3ee"/></linearGradient></defs>
+                <circle class="c-track" cx="80" cy="80" r="66" fill="none" stroke-width="13"/>
+                <circle class="c-val" cx="80" cy="80" r="66" fill="none" stroke="url(#rg1)" stroke-width="13" stroke-dasharray="299.5 414.7"/>
+              </svg>
+              <div class="ring-center"><div class="big num">$667</div><div class="sml">left · ≈$29/day</div></div>
+            </div>
+            <div class="bh-stat"><div class="k">Money in</div><div class="v in num">$1,745</div></div>
+          </div>
+          <div class="macro">
+            <div class="macro-legend">
+              <span><i class="m-needs"></i>64% Needs</span><span><i class="m-wants"></i>7% Wants</span>
+              <span><i class="m-debt"></i>10% Debt</span><span><i class="m-future"></i>19% Future</span>
+            </div>
+            <div class="macro-bar"><span class="m-needs" style="width:64%"></span><span class="m-wants" style="width:7%"></span><span class="m-debt" style="width:10%"></span><span class="m-future" style="width:19%"></span></div>
+          </div>
+        </div>
+
+        <div class="eyebrow"><span>Today's log</span><span class="lnk">Month view ›</span></div>
+
+        <div class="meal glass">
+          <div class="meal-head">
+            <span class="mtile t-rose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h14v20l-2.3-1.6L14.4 22l-2.4-1.6L9.6 22l-2.3-1.6L5 22z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg></span>
+            <span class="t">Bills &amp; debt<small>2 logged</small></span><span class="sum num">−$202.99</span>
+          </div>
+          <div class="meal-rows">
+            <div class="lrow">
+              <span class="tile t-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+              <span class="body"><span class="n">Netflix Premium</span><span class="s">1 month · Want · <span class="grade gC" style="width:15px;height:15px;font-size:9.5px;display:inline-flex;">C</span></span></span>
+              <span class="amt num">−$22.99</span>
+            </div>
+            <div class="lrow">
+              <span class="tile t-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+              <span class="body"><span class="n">Chase Visa · payment</span><span class="s">1 payment · plan 16 of 48</span></span>
+              <span class="amt num">−$180.00</span>
+            </div>
+            <div class="addrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add to Bills &amp; debt</div>
+          </div>
+        </div>
+
+        <div class="meal glass">
+          <div class="meal-head">
+            <span class="mtile t-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></span>
+            <span class="t">Living<small>2 logged</small></span><span class="sum num">−$124.60</span>
+          </div>
+          <div class="meal-rows">
+            <div class="lrow">
+              <span class="tile t-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
+              <span class="body"><span class="n">Costco run</span><span class="s">bundle · 12 items · Need</span></span>
+              <span class="amt num">−$86.40</span>
+            </div>
+            <div class="lrow">
+              <span class="tile t-slate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 22V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v18"/><path d="M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V9l-3-3"/><line x1="7" y1="6" x2="11" y2="6"/></svg></span>
+              <span class="body"><span class="n">Gas — Shell</span><span class="s">1 tank · Need</span></span>
+              <span class="amt num">−$38.20</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="meal glass">
+          <div class="meal-head">
+            <span class="mtile t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></span>
+            <span class="t">Money in<small>earns budget back</small></span><span class="sum in num">+$120.00</span>
+          </div>
+          <div class="meal-rows">
+            <div class="lrow">
+              <span class="tile t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="body"><span class="n">eBay flip</span><span class="s">1 sale · side income</span></span>
+              <span class="amt in num">+$120.00</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="meal glass">
+          <div class="meal-head">
+            <span class="mtile t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
+            <span class="t">Future you<small>1 logged</small></span><span class="sum num">−$200.00</span>
+          </div>
+          <div class="meal-rows">
+            <div class="lrow">
+              <span class="tile t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
+              <span class="body"><span class="n">Index fund buy</span><span class="s">1 buy · <span class="grade gA" style="width:15px;height:15px;font-size:9.5px;display:inline-flex;">A</span></span></span>
+              <span class="amt num">−$200.00</span>
+            </div>
+          </div>
+        </div>
+
+        <nav class="tabs">
+          <div class="grp">
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</span>
+            <span class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Log</span>
+          </div>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+          <div class="grp">
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>Library</span>
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M20 7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><circle cx="16.5" cy="13.5" r="1"/></svg>Accounts</span>
+          </div>
+        </nav>
+
+      </div></div></div>
+      <p class="fnote"><b>Groups are habit slots, macros are the split</b> — Netflix lives in “Bills &amp; debt” but counts as a Want in the macro bar, exactly like a food can be breakfast and still be mostly fat. A “Fun” group sits below the fold. Grades (A–D) ride along on rows.</p>
+    </div>
+
+    <!-- A2: envelope variant -->
+    <div class="fcol">
+      <div class="fcap"><i style="background:#38bdf8"></i>A2 · Flow-bar + envelopes (native Rich Era dialect)</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <div class="pg-head">
+          <div class="pg-title">Log</div>
+          <span class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></span>
+        </div>
+
+        <div class="daynav">
+          <span class="step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg></span>
+          <span class="lab glass">July 2026 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="step"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg></span>
+        </div>
+
+        <div class="flowcard glass">
+          <div class="fc-top">
+            <span class="fc-big num">$1,733 <small>of $2,400 out</small></span>
+            <span class="fc-chip num">$29/day safe</span>
+          </div>
+          <div class="stackbar"><span class="m-needs" style="width:46%"></span><span class="m-wants" style="width:5%"></span><span class="m-debt" style="width:7.5%"></span><span class="m-future" style="width:14%"></span></div>
+          <div class="fc-foot"><span>Money in <b class="num" style="color:var(--accent-ink)">$1,745</b></span><span>72% used · 23 days left</span></div>
+        </div>
+
+        <div class="env-grid">
+          <div class="env glass">
+            <div class="eh"><i class="m-needs"></i>Bills &amp; debt</div>
+            <div class="ev num">$1,218 <small>/ $1,300</small></div>
+            <div class="ebar"><span class="m-needs" style="width:94%"></span></div>
+            <div class="emeta">$82 left · rent, card, subs</div>
+          </div>
+          <div class="env glass">
+            <div class="eh"><i class="m-needs"></i>Living</div>
+            <div class="ev num">$335 <small>/ $600</small></div>
+            <div class="ebar"><span class="m-needs" style="width:56%"></span></div>
+            <div class="emeta">$265 left · groceries, gas</div>
+          </div>
+          <div class="env glass">
+            <div class="eh"><i class="m-wants"></i>Fun</div>
+            <div class="ev num" style="color:var(--rose-ink)">$181 <small>/ $150</small></div>
+            <div class="ebar"><span class="m-debt" style="width:100%"></span></div>
+            <div class="emeta over">$31 over — eats tomorrow's safe-to-spend</div>
+          </div>
+          <div class="env glass">
+            <div class="eh"><i class="m-future"></i>Future you</div>
+            <div class="ev num">$350 <small>/ $350</small></div>
+            <div class="ebar"><span class="m-future" style="width:100%"></span></div>
+            <div class="emeta" style="color:var(--accent-ink)">On target · savings + index buys</div>
+          </div>
+        </div>
+
+        <div class="eyebrow"><span>Logged today · Wed 8</span><span class="lnk">All ›</span></div>
+        <div class="meal glass">
+          <div class="meal-rows" style="border-top:none">
+            <div class="lrow">
+              <span class="tile t-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v8a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/></svg></span>
+              <span class="body"><span class="n">Coffee cart</span><span class="s">1 visit · Fun</span></span>
+              <span class="amt num">−$6.50</span>
+            </div>
+            <div class="lrow">
+              <span class="tile t-slate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 22V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v18"/><path d="M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V9l-3-3"/><line x1="7" y1="6" x2="11" y2="6"/></svg></span>
+              <span class="body"><span class="n">Gas — Shell</span><span class="s">1 tank · Living</span></span>
+              <span class="amt num">−$38.20</span>
+            </div>
+            <div class="lrow">
+              <span class="tile t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></span>
+              <span class="body"><span class="n">eBay flip</span><span class="s">1 sale · Money in</span></span>
+              <span class="amt in num">+$120.00</span>
+            </div>
+            <div class="addrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log something</div>
+          </div>
+        </div>
+
+        <nav class="tabs">
+          <div class="grp">
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</span>
+            <span class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Log</span>
+          </div>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+          <div class="grp">
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>Library</span>
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M20 7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><circle cx="16.5" cy="13.5" r="1"/></svg>Accounts</span>
+          </div>
+        </nav>
+
+      </div></div></div>
+      <p class="fnote"><b>Same engine, native dialect</b> — the flow bar echoes the existing Home card, envelopes give each group its own mini-budget (Lose It Premium's per-meal calorie targets). The over-state on Fun shows how overspend eats the daily allowance. Groups here double as envelope budgets.</p>
+    </div>
+
+  </div>
+</div>
+<!-- ============ B — MONEY FACTS ============ -->
+<div class="sect">
+  <div class="sect-bar"><span class="k">B</span><h2>Money Facts — the nutrition label for a dollar</h2><div class="rule"></div></div>
+  <p class="sect-note">Every item in the Library carries a facts label. The right-hand column is <b>% of your monthly budget</b> (the % Daily Value analog). Sections appear only when they apply — a coffee has no debt block, a loan has no growth block; everything else reads <b>n/a</b>, just like the vitamin list. The last line is always <b>Time cost</b>: the hours of your life a serving costs, from your real take-home rate — the app's whole thesis in one row.</p>
+  <div class="frames">
+
+    <!-- B1: debt item -->
+    <div class="fcol">
+      <div class="fcap"><i style="background:#fb7185"></i>B1 · Debt item — where micros earn their keep</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <span class="backchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Library</span>
+        <div class="d-head">
+          <span class="d-ic t-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+          <span class="d-name"><span class="t">Chase Visa — payment</span><span class="b">Chase · Bills &amp; debt</span></span>
+          <span class="grade gD">D</span>
+        </div>
+
+        <div class="facts glass">
+          <div class="facts-h">Money Facts <span class="edit">Edit</span></div>
+          <div class="f-serving"><span>Serving</span><b>1 payment · monthly</b></div>
+          <div class="rule-xl"></div>
+          <div class="f-impact"><span class="k">Impact per serving</span><span class="v out num">−$180.00</span></div>
+          <div class="rule-md"></div>
+          <div class="f-colhead">% of budget*</div>
+          <div class="frow"><span class="k">Cash out</span><span class="v num">$180.00</span><span class="pct">7.5%</span></div>
+          <div class="frow ind"><span class="k">Interest — 24.99% APR<small>compounds daily</small></span><span class="v num" style="color:var(--rose-ink)">$89.96</span><span class="pct warn">3.7%</span></div>
+          <div class="frow ind"><span class="k">Principal</span><span class="v num">$90.04</span><span class="pct mut">3.8%</span></div>
+          <div class="frow ind"><span class="k">Fees</span><span class="v num">$0.00</span><span class="pct mut">0%</span></div>
+          <div class="f-sect">Debt facts</div>
+          <div class="frow"><span class="k">Balance remaining</span><span class="v num">$4,320</span><span class="pct mut"></span></div>
+          <div class="frow"><span class="k">Payment plan<small>16 of 48 · <span class="planbar" style="display:inline-block;width:74px;vertical-align:middle;"><span style="width:33%"></span></span></small></span><span class="v num">33%</span><span class="pct mut"></span></div>
+          <div class="frow"><span class="k">Payoff date</span><span class="v">Nov 2028</span><span class="pct mut"></span></div>
+          <div class="frow"><span class="k">Interest to payoff</span><span class="v num" style="color:var(--rose-ink)">$1,930</span><span class="pct mut"></span></div>
+          <div class="f-sect">Your time</div>
+          <div class="frow"><span class="k">Time cost<small>at your $20.31/hr take-home</small></span><span class="v num">8.9 hrs</span><span class="pct mut"></span></div>
+          <div class="rule-sm"></div>
+          <p class="f-note">*Of your $2,400 July spend budget. Interest split computed from the item's APR + balance micros.</p>
+        </div>
+
+        <div class="eyebrow"><span>Options</span></div>
+        <div class="meal glass">
+          <div class="optrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg> Pay now in the shop <span class="arr">›</span></div>
+          <div class="optrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg> Repeats monthly · the 7th <span class="arr">›</span></div>
+        </div>
+
+        <div class="logbar">
+          <span class="qty num">1</span>
+          <span class="unit">payment <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="go num">Log −$180.00</span>
+        </div>
+
+      </div></div></div>
+      <p class="fnote"><b>The horror is the feature:</b> the label splits every payment into interest vs principal and prices the interest against your budget — 3.7% of July is going to Chase for nothing. Grade D is computed, not assigned: APR ≥ 20% → D.</p>
+    </div>
+
+    <!-- B2: subscription -->
+    <div class="fcol">
+      <div class="fcap"><i style="background:#a78bfa"></i>B2 · Subscription — servings &amp; lifetime history</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <span class="backchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Library</span>
+        <div class="d-head">
+          <span class="d-ic t-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+          <span class="d-name"><span class="t">Netflix Premium</span><span class="b">Netflix · Bills &amp; debt · Want</span></span>
+          <span class="grade gC">C</span>
+        </div>
+
+        <div class="facts glass">
+          <div class="facts-h">Money Facts <span class="edit">Edit</span></div>
+          <div class="f-serving"><span>Serving</span><b>1 month</b></div>
+          <div class="rule-xl"></div>
+          <div class="f-impact"><span class="k">Impact per serving</span><span class="v out num">−$22.99</span></div>
+          <div class="rule-md"></div>
+          <div class="f-colhead">% of budget*</div>
+          <div class="frow"><span class="k">Cash out</span><span class="v num">$22.99</span><span class="pct">1.0%</span></div>
+          <div class="frow ind"><span class="k">Per year, kept 12 months</span><span class="v num">$275.88</span><span class="pct mut">—</span></div>
+          <div class="frow ind"><span class="k">Interest / fees</span><span class="v num">n/a</span><span class="pct mut">—</span></div>
+          <div class="f-sect">History</div>
+          <div class="frow"><span class="k">Member since</span><span class="v">Mar 2023</span><span class="pct mut"></span></div>
+          <div class="frow"><span class="k">Lifetime spent</span><span class="v num" style="color:var(--rose-ink)">$897</span><span class="pct mut"></span></div>
+          <div class="frow"><span class="k">Times logged</span><span class="v num">41</span><span class="pct mut"></span></div>
+          <div class="f-sect">Other servings</div>
+          <div class="frow"><span class="k">Standard with ads</span><span class="v num">$7.99/mo</span><span class="pct" style="color:var(--accent-ink)">−65%</span></div>
+          <div class="frow"><span class="k">Premium <small>current</small></span><span class="v num">$22.99/mo</span><span class="pct mut"></span></div>
+          <div class="f-sect">Your time</div>
+          <div class="frow"><span class="k">Time cost<small>1.1 hrs each month</small></span><span class="v num">13.6 hrs/yr</span><span class="pct mut"></span></div>
+          <div class="rule-sm"></div>
+          <p class="f-note">*Of your $2,400 July spend budget. History computed from this item's logged transactions.</p>
+        </div>
+
+        <div class="logbar">
+          <span class="qty num">1</span>
+          <span class="unit">month <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="go num">Log −$22.99</span>
+        </div>
+
+      </div></div></div>
+      <p class="fnote"><b>Serving sizes as plan tiers:</b> the label lists the cheaper serving the way a food lists slice vs 100 g — a built-in “downgrade and save $180/yr” nudge. Lifetime spent is the line nobody can unsee.</p>
+    </div>
+
+    <!-- B3: investment -->
+    <div class="fcol">
+      <div class="fcap"><i style="background:#34d399"></i>B3 · Investment — growth micros, compounding as vitamins</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <span class="backchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Library</span>
+        <div class="d-head">
+          <span class="d-ic t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
+          <span class="d-name"><span class="t">Index fund — auto-buy</span><span class="b">VTSAX · Future you</span></span>
+          <span class="grade gA">A</span>
+        </div>
+
+        <div class="facts glass">
+          <div class="facts-h">Money Facts <span class="edit">Edit</span></div>
+          <div class="f-serving"><span>Serving</span><b>1 buy · weekly</b></div>
+          <div class="rule-xl"></div>
+          <div class="f-impact"><span class="k">Impact per serving</span><span class="v out num">−$200.00</span></div>
+          <div class="rule-md"></div>
+          <div class="f-colhead">% of budget*</div>
+          <div class="frow"><span class="k">Cash out</span><span class="v num">$200.00</span><span class="pct">8.3%</span></div>
+          <div class="frow ind"><span class="k">Into assets<small>net worth unchanged — moved, not spent</small></span><span class="v num" style="color:var(--accent-ink)">+$200.00</span><span class="pct mut"></span></div>
+          <div class="frow ind"><span class="k">Expense ratio</span><span class="v num">0.03%</span><span class="pct mut">—</span></div>
+          <div class="f-sect">Growth facts</div>
+          <div class="frow"><span class="k">Expected return<small>compound · annually</small></span><span class="v num">7%/yr</span><span class="pct mut"></span></div>
+          <div class="frow ind"><span class="k">Value in 1 yr</span><span class="v num">$214</span><span class="pct mut"></span></div>
+          <div class="frow ind"><span class="k">Value in 5 yrs</span><span class="v num">$281</span><span class="pct mut"></span></div>
+          <div class="frow ind"><span class="k">Value in 10 yrs</span><span class="v num">$393</span><span class="pct mut"></span></div>
+          <div class="frow ind"><span class="k">Value in 30 yrs</span><span class="v num" style="color:var(--accent-ink)">$1,523</span><span class="pct mut"></span></div>
+          <div class="frow"><span class="k">Dividend yield</span><span class="v num">1.3%</span><span class="pct mut"></span></div>
+          <div class="f-sect">Your time</div>
+          <div class="frow"><span class="k">Time cost today</span><span class="v num">9.8 hrs</span><span class="pct mut"></span></div>
+          <div class="frow"><span class="k">Hours it buys future-you<small>30-yr value ÷ your rate</small></span><span class="v num" style="color:var(--accent-ink)">≈75 hrs</span><span class="pct mut"></span></div>
+          <div class="rule-sm"></div>
+          <p class="f-note">*Of your $2,400 July spend budget. Projections use the expected-return micro — an estimate, not a promise.</p>
+        </div>
+
+        <div class="logbar">
+          <span class="qty num">1</span>
+          <span class="unit">buy <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="go num">Log −$200.00</span>
+        </div>
+
+      </div></div></div>
+      <p class="fnote"><b>The A-grade counterweight:</b> compounding rows read like the vitamin list, and the closing line converts a $200 buy into “≈75 hours of future freedom” — buying back time, literally. Same label skeleton as B1; only the sections differ.</p>
+    </div>
+
+  </div>
+</div>
+<!-- ============ C — LIBRARY ============ -->
+<div class="sect">
+  <div class="sect-bar"><span class="k">C</span><h2>The Library — “My Foods” for money</h2><div class="rule"></div></div>
+  <p class="sect-note">One searchable catalog of reusable items, sorted by recency and frequency like My Foods (“$22.99/mo · last Jul 5”). It <b>absorbs two existing pages</b>: the recurring-sources list becomes the items that happen to have a schedule, and the PayDay shop becomes its storefront mode — same data, two moods. Tapping ＋ logs at the default serving; a second tap opens the quick capsule.</p>
+  <div class="frames">
+
+    <!-- C1: list -->
+    <div class="fcol">
+      <div class="fcap"><i style="background:#34d399"></i>C1 · Library list + quick-log capsule</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <div class="pg-head">
+          <div class="pg-title">Library</div>
+          <span class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></span>
+        </div>
+
+        <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Search your money items…</div>
+
+        <div class="libtabs">
+          <span class="libtab on">All</span><span class="libtab">Money out</span><span class="libtab">Money in</span><span class="libtab">Bundles</span>
+        </div>
+
+        <div class="rail">
+          <div class="dealc dl-rose"><span class="mtile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span><div class="dt">Visa payment</div><div class="ds">Due in 3 days</div><div class="da num">$180</div></div>
+          <div class="dealc dl-amber"><span class="mtile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span><div class="dt">Netflix</div><div class="ds">Due today</div><div class="da num">$22.99</div></div>
+          <div class="dealc dl-green"><span class="mtile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><div class="dt">Emergency fund</div><div class="ds">Gap to goal</div><div class="da num">$455</div></div>
+        </div>
+
+        <div class="eyebrow"><span>Frequent</span><span class="lnk">A–Z ›</span></div>
+        <div class="meal glass">
+          <div class="meal-rows" style="border-top:none">
+            <div class="librow">
+              <span class="tile t-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v8a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"/></svg></span>
+              <span class="body"><span class="n">Coffee cart</span><span class="s num">$6.50 per visit · Fun · today</span></span>
+              <span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+            </div>
+            <div class="librow" style="background:var(--surface-3)">
+              <span class="tile t-slate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="22" x2="15" y2="22"/><path d="M4 22V4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v18"/><path d="M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V9l-3-3"/><line x1="7" y1="6" x2="11" y2="6"/></svg></span>
+              <span class="body"><span class="n">Gas — Shell</span><span class="s num">$38.20 per tank · Living</span></span>
+              <span class="quickcap">
+                <span class="qbtn num">1 tank <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+                <span class="qgo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></span>
+              </span>
+            </div>
+            <div class="librow">
+              <span class="tile t-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></span>
+              <span class="body"><span class="n">Netflix Premium <span class="grade gC" style="width:15px;height:15px;font-size:9.5px;">C</span></span><span class="s num">$22.99 per month · last Jul 5</span></span>
+              <span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+            </div>
+            <div class="librow">
+              <span class="tile t-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg></span>
+              <span class="body"><span class="n">Costco run <span class="pill p-info" style="font-size:9px;padding:2px 6px;">BUNDLE</span></span><span class="s num">12 items · ≈$86.40 per trip</span></span>
+              <span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+            </div>
+            <div class="librow">
+              <span class="tile t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span>
+              <span class="body"><span class="n">Paycheck — Optima</span><span class="s num" style="color:var(--accent-ink)">+$1,625 per check · biweekly Fri</span></span>
+              <span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+            </div>
+            <div class="librow">
+              <span class="tile t-rose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></span>
+              <span class="body"><span class="n">Rent</span><span class="s num">$950 per month · due the 1st</span></span>
+              <span class="plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+            </div>
+            <div class="addrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New item or bundle</div>
+          </div>
+        </div>
+
+        <nav class="tabs">
+          <div class="grp">
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</span>
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Log</span>
+          </div>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+          <div class="grp">
+            <span class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>Library</span>
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M20 7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><circle cx="16.5" cy="13.5" r="1"/></svg>Accounts</span>
+          </div>
+        </nav>
+
+      </div></div></div>
+      <p class="fnote"><b>Recurring lives here too</b> — the paycheck row is today's IncomeSources list wearing new clothes; its calendar / forecast / ledger pages stay and open from the row. The highlighted Gas row shows the mid-tap quick-log capsule (serving picker + confirm), Lose It's exact gesture.</p>
+    </div>
+
+    <!-- C2: storefront -->
+    <div class="fcol">
+      <div class="fcap"><i style="background:#fbbf24"></i>C2 · Storefront mode — the PayDay shop, kept</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <div class="shopbar">
+          <span class="wordmark">Pay<b>Day</b></span>
+          <span class="cartbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg><span class="b">2</span></span>
+        </div>
+
+        <div class="libtabs" style="margin-top:0">
+          <span class="libtab">List</span><span class="libtab on">Storefront</span><span class="libtab">Bundles</span>
+        </div>
+
+        <div class="eyebrow"><span>Today's deals</span></div>
+        <div class="rail">
+          <div class="dealc dl-rose"><span class="mtile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2h14v20l-2.3-1.6L14.4 22l-2.4-1.6L9.6 22l-2.3-1.6L5 22z"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/></svg></span><div class="dt">Internet</div><div class="ds">Due tomorrow</div><div class="da num">$64.99</div></div>
+          <div class="dealc dl-amber"><span class="mtile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span><div class="dt">Chase Visa</div><div class="ds">Knock it down</div><div class="da num">$4,320</div></div>
+          <div class="dealc dl-green"><span class="mtile"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><div class="dt">Emergency fund</div><div class="ds">Close the gap</div><div class="da num">$455</div></div>
+        </div>
+
+        <div class="eyebrow"><span>All payments</span></div>
+        <div class="pgrid">
+          <div class="pcard glass">
+            <div class="pimg t-rose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+            <div class="ptitle">Rent</div><div class="pprice num">$950.00</div><div class="pmeta">monthly · from Checking</div>
+            <span class="pdue p-mut"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> 24 days</span>
+            <span class="pbuy">View</span>
+          </div>
+          <div class="pcard glass">
+            <div class="pimg t-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></div>
+            <div class="ptitle">Chase Visa</div><div class="pprice num">$4,320.00</div><div class="pmeta">card balance · APR 24.99%</div>
+            <span class="pdue p-bad"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> min due 3 days</span>
+            <span class="pbuy">In cart ✓</span>
+          </div>
+          <div class="pcard glass">
+            <div class="pimg t-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="13" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+            <div class="ptitle">Netflix Premium</div><div class="pprice num">$22.99</div><div class="pmeta">monthly · grade C</div>
+            <span class="pdue p-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> due today</span>
+            <span class="pbuy">View</span>
+          </div>
+          <div class="pcard glass">
+            <div class="pimg t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></div>
+            <div class="ptitle">Emergency fund</div><div class="pprice">Deposit</div><div class="pmeta num">goal $3,000 · $455 to go</div>
+            <span class="pdue p-ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> 85% there</span>
+            <span class="pbuy">Deposit</span>
+          </div>
+        </div>
+
+        <nav class="tabs">
+          <div class="grp">
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</span>
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Log</span>
+          </div>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+          <div class="grp">
+            <span class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>Library</span>
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M20 7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><circle cx="16.5" cy="13.5" r="1"/></svg>Accounts</span>
+          </div>
+        </nav>
+
+      </div></div></div>
+      <p class="fnote"><b>Nothing is thrown away</b> — the shop's deals rail, product grid, photos, and cart survive as the Library's storefront mode. The cart gains a second life: “save cart as bundle” is how a Costco-run recipe gets made. Item photos (already stored as ItemImage blobs) become the “food photo”.</p>
+    </div>
+
+  </div>
+</div>
+<style>
+  /* Section D/E extras */
+  .hero2 { border-radius: 22px; padding: 17px 18px; background: var(--hero-grad); color: #fff; box-shadow: 0 18px 38px -20px rgba(0,0,0,.7); }
+  .hero2 .hl { font-size: 11px; opacity: .8; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .hero2 .hb { font-size: 30px; font-weight: 850; letter-spacing: -0.02em; margin: 2px 0 3px; }
+  .hero2 .hs { font-size: 12px; opacity: .85; font-weight: 650; }
+  .bmini { display: flex; gap: 14px; align-items: center; padding: 13px 14px; }
+  .bmini .ring { width: 78px; height: 78px; flex: 0 0 auto; }
+  .bmini .ring-center .big { font-size: 14.5px; }
+  .bmini .ring-center .sml { font-size: 8px; }
+  .bmini .bb { flex: 1; min-width: 0; }
+  .bmini .t1 { font-size: 13.5px; font-weight: 800; display: flex; justify-content: space-between; align-items: baseline; }
+  .bmini .t1 small { font-size: 11px; color: var(--text-faint); font-weight: 650; }
+  .bmini .t2 { font-size: 11px; color: var(--text-faint); font-weight: 600; margin: 2px 0 8px; }
+  .rwtrack { position: relative; height: 6px; border-radius: 99px; background: var(--track); margin: 12px 4px 9px; }
+  .rwtick { position: absolute; top: 50%; transform: translate(-50%,-50%); width: 10px; height: 10px; border-radius: 50%; background: var(--surface-solid); border: 2px solid var(--rose); }
+  .rwtick.pay { border-color: var(--accent); }
+  .srvrow { display: flex; align-items: center; gap: 10px; padding: 10px 14px; font-size: 13px; font-weight: 650; }
+  .srvrow + .srvrow { border-top: 1px solid var(--border); }
+  .srvrow .sv { margin-left: auto; font-weight: 750; font-variant-numeric: tabular-nums; }
+  .srvrow .trash { color: var(--rose-ink); opacity: .8; } .srvrow .trash svg { width: 15px; height: 15px; }
+</style>
+
+<!-- ============ D — ITEM EDITOR ============ -->
+<div class="sect">
+  <div class="sect-bar"><span class="k">D</span><h2>Item editor — Edit Food, for money</h2><div class="rule"></div></div>
+  <p class="sect-note">Everything on the Money Facts label is entered here — or filled by <b>Autofill</b>, which mines the item's own transaction history (and OFX imports) for typical amount, frequency, and merchant, the way Lose It's camera autofills a label. Micros are one collapsible section: skip it for a coffee, fill it for a loan.</p>
+  <div class="frames">
+
+    <div class="fcol">
+      <div class="fcap"><i style="background:#38bdf8"></i>D1 · New / edit item with micros + autofill</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <div class="pg-head">
+          <span class="backchip" style="margin-bottom:0"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg> Cancel</span>
+          <div class="pg-title" style="font-size:19px">Edit item</div>
+          <span style="font-size:14px;font-weight:800;color:var(--accent-ink)">Save</span>
+        </div>
+
+        <div class="glass" style="padding:13px 14px; display:flex; gap:12px; margin-bottom:12px;">
+          <span class="photo-sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>Photo</span>
+          <div style="flex:1">
+            <div class="field" style="margin-bottom:8px"><label>Name — required</label><div class="input">Gas — Shell</div></div>
+            <div class="field" style="margin-bottom:0"><label>Counterparty</label><div class="input mut">Shell #4482</div></div>
+          </div>
+        </div>
+
+        <div class="twocol" style="margin-bottom:12px">
+          <div class="field" style="margin-bottom:0">
+            <label>Direction</label>
+            <div class="seg"><button class="on exp">Money out</button><button>Money in</button></div>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label>Repeats</label>
+            <div class="seg"><button class="on">Off</button><button>Wk</button><button>2wk</button><button>Mo</button></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Counts as — the macro</label>
+          <div class="chips">
+            <span class="chip on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> Need</span>
+            <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Want</span>
+            <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> Debt</span>
+            <span class="chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg> Future</span>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Category</label>
+          <div class="chips">
+            <span class="chip on">Transport</span><span class="chip">Groceries</span><span class="chip">Utilities</span><span class="chip">Housing</span><span class="chip">＋</span>
+          </div>
+        </div>
+
+        <div class="eyebrow" style="margin-top:15px"><span>Servings — same $ each</span></div>
+        <div class="meal glass" style="margin-bottom:12px">
+          <div class="srvrow"><b>1 tank</b> <span style="color:var(--text-faint);font-size:11px">typical</span><span class="sv num">$38.20</span><span class="trash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></span></div>
+          <div class="srvrow"><b>Fill-up ×2</b><span class="sv num">$76.40</span><span class="trash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg></span></div>
+          <div class="addrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add serving size</div>
+        </div>
+
+        <div class="glass" style="padding:13px 14px;">
+          <div class="microhead"><span class="t">Money micros</span><span class="s">optional — powers the facts label</span></div>
+          <div class="twocol" style="margin-bottom:10px">
+            <div class="field" style="margin-bottom:0"><label>APR %</label><div class="input mut">—</div></div>
+            <div class="field" style="margin-bottom:0"><label>Interest model</label><div class="input mut">None ▾</div></div>
+          </div>
+          <div class="twocol" style="margin-bottom:10px">
+            <div class="field" style="margin-bottom:0"><label>Expected return %/yr</label><div class="input mut">—</div></div>
+            <div class="field" style="margin-bottom:0"><label>Plan (payments)</label><div class="input mut">— of —</div></div>
+          </div>
+          <div class="twocol">
+            <div class="field" style="margin-bottom:0"><label>Fees per serving</label><div class="input mut">—</div></div>
+            <div class="field" style="margin-bottom:0"><label>Tax deductible</label><div class="seg"><button class="on">No</button><button>Yes</button></div></div>
+          </div>
+        </div>
+
+        <span class="autofill"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/><path d="M19 15l.9 2.1L22 18l-2.1.9L19 21l-.9-2.1L16 18l2.1-.9z"/></svg> Autofill from history</span>
+
+        <div class="logbar"><span class="go">Save item</span></div>
+
+      </div></div></div>
+      <p class="fnote"><b>Two-serving trick:</b> extra servings are shortcuts (“Fill-up ×2”), and for subscriptions they model plan tiers. The micros grid maps 1:1 to new nullable columns on the item — empty micros simply hide their label sections.</p>
+    </div>
+
+    <!-- E: Home integration -->
+    <div class="fcol">
+      <div class="fcap"><i style="background:#a78bfa"></i>E1 · Home gains the ring — everything else stays</div>
+      <div class="phone"><div class="screen dark"><div class="notch"></div><div class="pad">
+
+        <div class="pg-head">
+          <span class="wordmark">Rich <b>Era</b></span>
+          <span class="iconbtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg></span>
+        </div>
+
+        <div class="hero2">
+          <div class="hl">Total balance</div>
+          <div class="hb num">$12,481.22</div>
+          <div class="hs num">↑ +$1,012 this month</div>
+        </div>
+
+        <div class="eyebrow"><span>July budget</span><span class="lnk">Open log ›</span></div>
+        <div class="bmini glass">
+          <div class="ring">
+            <svg viewBox="0 0 160 160">
+              <circle class="c-track" cx="80" cy="80" r="66" fill="none" stroke-width="15"/>
+              <circle class="c-val" cx="80" cy="80" r="66" fill="none" stroke="url(#rg1)" stroke-width="15" stroke-dasharray="299.5 414.7"/>
+            </svg>
+            <div class="ring-center"><div class="big num">$667</div><div class="sml">left</div></div>
+          </div>
+          <div class="bb">
+            <div class="t1"><span class="num">$29/day safe</span><small>23 days left</small></div>
+            <div class="t2 num">Out $1,733 · in $1,745 · 72% used</div>
+            <div class="macro-bar"><span class="m-needs" style="width:64%"></span><span class="m-wants" style="width:7%"></span><span class="m-debt" style="width:10%"></span><span class="m-future" style="width:19%"></span></div>
+          </div>
+        </div>
+
+        <div class="eyebrow"><span>Runway to payday</span><span class="lnk">Details ›</span></div>
+        <div class="glass" style="padding:13px 14px">
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);font-weight:650"><span>9 days · 3 expenses · <b class="num" style="color:var(--rose-ink)">−$267</b></span><span>›</span></div>
+          <div class="rwtrack">
+            <span class="rwtick" style="left:18%"></span><span class="rwtick" style="left:44%"></span><span class="rwtick" style="left:70%"></span><span class="rwtick pay" style="left:100%"></span>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text-faint);font-weight:600"><span>Today</span><span class="num" style="color:var(--accent-ink)">Paycheck · +$1,625</span></div>
+        </div>
+
+        <div class="eyebrow"><span>Next paycheck</span></div>
+        <div class="meal glass">
+          <div class="meal-rows" style="border-top:none">
+            <div class="lrow">
+              <span class="tile t-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></span>
+              <span class="body"><span class="n">Paycheck — Optima</span><span class="s">Biweekly · in 9 days</span></span>
+              <span class="amt in num">+$1,625</span>
+            </div>
+            <div style="padding:0 14px 12px"><div class="ebar" style="margin-top:2px"><span class="m-future" style="width:36%"></span></div></div>
+          </div>
+        </div>
+
+        <div class="eyebrow"><span>Accounts</span><span class="lnk">Manage ›</span></div>
+        <div class="meal glass">
+          <div class="meal-rows" style="border-top:none">
+            <div class="lrow">
+              <span class="tile t-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M20 7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><circle cx="16.5" cy="13.5" r="1"/></svg></span>
+              <span class="body"><span class="n">Everyday Checking <span style="font-size:10.5px;color:var(--text-faint);font-weight:600">Checking</span></span></span>
+              <span class="amt num">$3,207.14</span>
+            </div>
+            <div class="lrow">
+              <span class="tile t-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg></span>
+              <span class="body"><span class="n">Chase Visa <span style="font-size:10.5px;color:var(--text-faint);font-weight:600">Credit card</span></span></span>
+              <span class="amt num" style="color:var(--rose-ink)">−$4,320.00</span>
+            </div>
+          </div>
+        </div>
+
+        <nav class="tabs">
+          <div class="grp">
+            <span class="tab on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>Home</span>
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>Log</span>
+          </div>
+          <span class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></span>
+          <div class="grp">
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>Library</span>
+            <span class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7H5a2 2 0 0 1 0-4h13v4"/><path d="M20 7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/><circle cx="16.5" cy="13.5" r="1"/></svg>Accounts</span>
+          </div>
+        </nav>
+
+      </div></div></div>
+      <p class="fnote"><b>One new card, zero demolition</b> — the budget ring slots between the balance hero and the runway card. The balance hero doubles as the “weigh-in”: updating balances via the existing sheet is the scale, and the monthly trend is the weight curve.</p>
+    </div>
+
+  </div>
+</div>
+
+<!-- ============ F — IA DECISION ============ -->
+<div class="sect">
+  <div class="sect-bar"><span class="k">F</span><h2>Pages: what changes, what merges, what's new</h2><div class="rule"></div></div>
+  <p class="sect-note"><b>Verdict: this is not one new page.</b> It's one new entity (the money item), two rebuilt hubs (Log, Library), and one new card on Home. Both spare surfaces already exist — Activity and the Paychecks tab — so the tab bar keeps five slots and nothing beloved is deleted.</p>
+
+  <div class="ia-wrap">
+    <div class="ia-card">
+      <h3>Tab bar — <span>two renames, zero new slots</span></h3>
+      <div class="ia-tabs" style="margin-bottom:10px">
+        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#64748b;width:52px">NOW</span>
+        <span class="ia-tab">Home</span><span class="ia-tab">Activity</span><span class="ia-tab">＋</span><span class="ia-tab">Paychecks</span><span class="ia-tab">Accounts</span>
+      </div>
+      <div class="ia-tabs">
+        <span style="font-size:11px;font-weight:800;letter-spacing:.1em;color:#64748b;width:52px">NEXT</span>
+        <span class="ia-tab">Home</span><span class="ia-tab new">Log</span><span class="ia-tab">＋</span><span class="ia-tab new">Library</span><span class="ia-tab">Accounts</span>
+      </div>
+    </div>
+
+    <div class="ia-card">
+      <h3>Where every existing page lands</h3>
+      <div class="merge"><span class="from">Transactions (Activity)</span><span class="ia-arrow">→</span><span class="to">rebuilt as the <b>Log</b><small>same route; sheets, search, month picker all survive</small></span></div>
+      <div class="merge"><span class="from">Pay shop (PayDay)</span><span class="ia-arrow">→</span><span class="to"><b>Library</b> · storefront mode<small>deals, grid, photos, cart untouched</small></span></div>
+      <div class="merge"><span class="from">Income sources list</span><span class="ia-arrow">→</span><span class="to"><b>Library</b> · items with a schedule<small>a paycheck is just an income item that repeats</small></span></div>
+      <div class="merge"><span class="from">Shop item detail</span><span class="ia-arrow">→</span><span class="to"><b>Item detail</b> + Money Facts label<small>photo + order flow stay; label added</small></span></div>
+      <div class="merge"><span class="from">Income source edit</span><span class="ia-arrow">→</span><span class="to"><b>Item editor</b><small>gains servings, macro bucket, micros</small></span></div>
+      <div class="merge"><span class="from">Calendar · Forecast · Ledger · Runway · Savings</span><span class="ia-arrow">→</span><span class="to">unchanged<small>open from item rows and Home cards</small></span></div>
+      <div class="merge"><span class="from">Categories</span><span class="ia-arrow">→</span><span class="to">gains a macro bucket per category<small>Needs / Wants / Debt / Future roll-up</small></span></div>
+      <div class="merge"><span class="from">Import (OFX)</span><span class="ia-arrow">→</span><span class="to">gains “map merchant → item”<small>the barcode scanner of bank data</small></span></div>
+      <div class="merge"><span class="from">— none —</span><span class="ia-arrow">＋</span><span class="to"><b>Bundles</b><small>saved carts become recipes; new sheet, not a new tab</small></span></div>
+    </div>
+
+    <div class="ia-card">
+      <h3>Build order — <span>each phase ships alone</span></h3>
+      <div class="phase"><span class="pn">1</span><span class="pb"><b>Foundations</b>Generalize IncomeSource into Item (schedule becomes optional; add unit, macro bucket, nullable micros). Add ItemId + Quantity to Transaction. Budget = projected income − savings target. Bucket field on Category.</span></div>
+      <div class="phase"><span class="pn">2</span><span class="pb"><b>The Log</b>Rebuild Activity: day paging, money groups with subtotals, budget ring + macro bar, quick-log sheet on the FAB. Old flows (search, transfers, month picker) carry over.</span></div>
+      <div class="phase"><span class="pn">3</span><span class="pb"><b>Library + Money Facts</b>Merge Shop and Income sources into the Library; item detail gets the facts label (micros-driven sections, % of budget, time cost, grades); editor gets servings + micros + autofill-from-history.</span></div>
+      <div class="phase"><span class="pn">4</span><span class="pb"><b>Bundles & delight</b>Save cart as bundle, log a bundle in one tap, net-worth weigh-in trend on Home, monthly “report card” with grade distribution.</span></div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

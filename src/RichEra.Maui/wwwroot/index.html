@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Rich Era</title>
+    <base href="/" />
+    <script>
+        // Apply the saved theme to <html> before any CSS parses so there's no
+        // flash of the wrong palette. Source of truth is localStorage; the
+        // in-app ThemeToggle calls window.n2fTheme.toggle().
+        (function () {
+            try {
+                var t = localStorage.getItem('n2f-theme') || 'light';
+                document.documentElement.setAttribute('data-theme', t);
+            } catch (e) { document.documentElement.setAttribute('data-theme', 'light'); }
+            window.n2fTheme = {
+                get: function () { try { return localStorage.getItem('n2f-theme') || 'light'; } catch (e) { return 'light'; } },
+                set: function (t) { try { localStorage.setItem('n2f-theme', t); } catch (e) { } document.documentElement.setAttribute('data-theme', t); return t; },
+                toggle: function () { return this.set(this.get() === 'dark' ? 'light' : 'dark'); }
+            };
+            // Replay the page-fade CSS animation on navigation WITHOUT recreating
+            // the routed component (MainLayout calls this on each LocationChanged).
+            window.n2fPageFade = function () {
+                var el = document.getElementById('app-content');
+                if (!el) return;
+                el.classList.remove('page-fade');
+                void el.offsetWidth; // force reflow so the animation restarts
+                el.classList.add('page-fade');
+            };
+            // Focus the first input under `root` (or `root` itself) and select its
+            // text — sheet autofocus. Blazor can't declaratively focus/select
+            // elements inserted after first paint, so components call this from
+            // OnAfterRenderAsync with an ElementReference.
+            window.n2fFocusSelect = function (root) {
+                if (!root) return;
+                var el = root.matches && root.matches('input') ? root : root.querySelector('input');
+                if (el) { el.focus(); if (el.select) el.select(); }
+            };
+        })();
+    </script>
+    <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="stylesheet" href="RichEra.Maui.styles.css" />
+    <link rel="stylesheet" href="css/theme.css" />
+    <link rel="icon" href="data:,">
+    <style>
+        /* Paint the branded backdrop from the first frame so there's no
+           transparent/black flash before app.css + theme.css load. Mirrors the
+           Aurora/Midnight --app-bg, keyed off the data-theme set above. */
+        :root { --boot-bg: linear-gradient(170deg, #eafff6 0%, #eef2ff 48%, #fdeafe 100%); }
+        [data-theme="dark"] { --boot-bg: radial-gradient(125% 85% at 50% -10%, #16233a 0%, #0b1322 55%, #05080f 100%); }
+        html, body { margin: 0; min-height: 100%; background: var(--boot-bg); }
+
+        /* Animated boot loader shown in #app until Blazor mounts. Pure CSS + inline
+           SVG (no images, fonts, or scripts) so it paints on the first frame and adds
+           nothing to load time. Blazor replaces #app on mount, removing it. */
+        /* Center on .boot (not #app) so it stops applying once Blazor replaces
+           #app's children on mount — otherwise the flex rule would collapse the app. */
+        .boot { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; }
+        .boot-logo { width: 92px; height: 78px; animation: boot-pulse 1.9s ease-in-out infinite; }
+        @keyframes boot-pulse { 0%, 100% { transform: scale(1); opacity: .9; } 50% { transform: scale(1.06); opacity: 1; } }
+        .boot-track { width: 140px; height: 5px; border-radius: 3px; background: rgba(127,131,153,.22); overflow: hidden; position: relative; }
+        .boot-fill { position: absolute; inset: 0 auto 0 0; height: 100%; width: 42%; border-radius: 3px;
+                     background: linear-gradient(90deg,#2DD4BF,#38BDF8,#8B5CF6,#F472B6); animation: boot-slide 1.35s ease-in-out infinite; }
+        @keyframes boot-slide { 0% { transform: translateX(-115%); } 100% { transform: translateX(330%); } }
+        .boot-wm { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 16px; letter-spacing: .4px; color: #1b2440; }
+        [data-theme="dark"] .boot-wm { color: #E7ECF5; }
+        .boot-wm b { color: #F5C451; font-weight: 600; }
+        @media (prefers-reduced-motion: reduce) { .boot-logo, .boot-fill { animation: none; } .boot-fill { width: 100%; } }
+    </style>
+</head>
+
+<body>
+
+    <div class="status-bar-safe-area"></div>
+
+    <div id="app">
+        <div class="boot" role="status" aria-label="Loading Rich Era">
+            <svg class="boot-logo" viewBox="95 118 270 226" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <defs><radialGradient id="bootcoin" cx="0.4" cy="0.3" r="0.9"><stop offset="0" stop-color="#FBE08C"/><stop offset="0.6" stop-color="#F5C451"/><stop offset="1" stop-color="#D89B26"/></radialGradient></defs>
+                <g fill="url(#bootcoin)" stroke="#B97F1E" stroke-width="2.5">
+                    <ellipse cx="145" cy="318" rx="38" ry="11"/><ellipse cx="145" cy="292" rx="38" ry="11"/>
+                    <ellipse cx="228" cy="318" rx="38" ry="11"/><ellipse cx="228" cy="292" rx="38" ry="11"/><ellipse cx="228" cy="266" rx="38" ry="11"/><ellipse cx="228" cy="240" rx="38" ry="11"/>
+                    <ellipse cx="311" cy="318" rx="38" ry="11"/><ellipse cx="311" cy="292" rx="38" ry="11"/><ellipse cx="311" cy="266" rx="38" ry="11"/><ellipse cx="311" cy="240" rx="38" ry="11"/><ellipse cx="311" cy="214" rx="38" ry="11"/><ellipse cx="311" cy="188" rx="38" ry="11"/>
+                </g>
+                <g fill="none" stroke="#34D399" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"><path d="M283 162 L311 134 L339 162"/><path d="M311 134 L311 170"/></g>
+            </svg>
+            <div class="boot-track"><div class="boot-fill"></div></div>
+            <div class="boot-wm">Rich <b>Era</b></div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">🗙</a>
+    </div>
+
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
+
+</body>
+
+</html>

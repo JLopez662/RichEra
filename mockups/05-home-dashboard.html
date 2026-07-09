@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup 05 — Home dashboard</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #1a2027;
+    --card-2: #232b35;
+    --text: #e8edf2;
+    --muted: #8b95a3;
+    --accent: #2ecc71;
+    --accent-soft: rgba(46,204,113,0.14);
+    --danger: #e74c3c;
+    --danger-soft: rgba(231,76,60,0.14);
+    --warn: #f39c12;
+    --info: #3498db;
+    --border: #2a3340;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 520px;
+    margin: 0 auto;
+    padding-bottom: 90px;
+  }
+
+  /* Top bar */
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 6px 0 18px;
+  }
+  .brand { font-size: 17px; font-weight: 700; letter-spacing: -0.01em; }
+  .brand .dot { color: var(--accent); }
+  .menu {
+    width: 36px; height: 36px; border-radius: 9px;
+    border: 1px solid var(--border); background: var(--card);
+    display: grid; place-items: center; color: var(--muted);
+  }
+
+  /* Hero balance card */
+  .hero {
+    background: linear-gradient(150deg, #1c2630, #161c24);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+  .hero .label {
+    color: var(--muted); font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .hero .balance {
+    font-size: 40px; font-weight: 700; letter-spacing: -0.02em;
+    margin: 6px 0 2px; line-height: 1;
+  }
+  .hero .sub {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--accent);
+    background: var(--accent-soft);
+    padding: 4px 10px; border-radius: 999px;
+    margin-top: 8px;
+  }
+
+  /* This-month row */
+  .section-label {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 22px 4px 10px;
+  }
+  .section-label h2 { margin: 0; font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .section-label .month-pick { font-size: 13px; color: var(--text); display: inline-flex; align-items: center; gap: 5px; }
+
+  .month-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .stat .k { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .stat .k .pip { width: 8px; height: 8px; border-radius: 50%; }
+  .stat .v { font-size: 22px; font-weight: 700; margin-top: 6px; letter-spacing: -0.01em; }
+  .pip.inc { background: var(--accent); }
+  .pip.exp { background: var(--danger); }
+  .v.inc { color: var(--accent); }
+  .v.exp { color: var(--text); }
+
+  /* Net + flow bar spanning full width */
+  .net {
+    grid-column: 1 / -1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+  }
+  .net-top { display: flex; align-items: baseline; justify-content: space-between; }
+  .net-top .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .net-top .v { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .flow {
+    height: 8px; border-radius: 5px; background: var(--card-2);
+    margin-top: 12px; display: flex; overflow: hidden;
+  }
+  .flow .in { background: var(--accent); width: 100%; }
+  .flow .out { background: var(--danger); width: 0%; }
+  .flow-meta { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--muted); }
+
+  /* Next paycheck — ties into the income engine */
+  .paycheck {
+    margin-top: 14px;
+    background: var(--accent-soft);
+    border: 1px solid rgba(46,204,113,0.35);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .paycheck .icon { font-size: 22px; }
+  .paycheck .body { flex: 1; }
+  .paycheck .t1 { font-size: 14px; font-weight: 600; }
+  .paycheck .t2 { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .paycheck .amt { font-size: 16px; font-weight: 700; color: var(--accent); }
+  .paycheck .when { font-size: 11px; color: var(--muted); text-align: right; margin-top: 2px; }
+
+  /* Accounts */
+  .acct {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 4px 0;
+  }
+  .acct-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .acct-row:last-child { border-bottom: none; }
+  .acct-ic {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: var(--card-2); display: grid; place-items: center;
+    font-size: 17px; flex-shrink: 0;
+  }
+  .acct-name { font-size: 14px; font-weight: 600; }
+  .acct-type {
+    font-size: 11px; color: var(--muted);
+    background: var(--card-2); padding: 1px 7px; border-radius: 5px;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .acct-bal { margin-left: auto; font-size: 15px; font-weight: 700; }
+
+  /* Floating action bar */
+  .fab {
+    position: fixed; left: 50%; transform: translateX(-50%);
+    bottom: 16px; width: calc(100% - 32px); max-width: 488px;
+    display: flex; gap: 10px;
+  }
+  .fab button {
+    flex: 1; border: 1px solid var(--border);
+    background: var(--card); color: var(--text);
+    border-radius: 12px; padding: 12px; font-size: 13px; font-weight: 600;
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .fab button.primary { background: var(--accent); color: #06210f; border-color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Rich Era <span class="dot">•</span></div>
+    <div class="menu">☰</div>
+  </div>
+
+  <!-- HERO: the single most important number, surfaced first -->
+  <div class="hero">
+    <div class="label">Total balance</div>
+    <div class="balance">$1,746.16</div>
+    <div class="sub">▲ +$1,346.16 this month</div>
+  </div>
+
+  <!-- THIS MONTH -->
+  <div class="section-label">
+    <h2>This month</h2>
+    <span class="month-pick">May 2026 ▾</span>
+  </div>
+
+  <div class="month-grid">
+    <div class="stat">
+      <div class="k"><span class="pip inc"></span> Income</div>
+      <div class="v inc">$1,346.16</div>
+    </div>
+    <div class="stat">
+      <div class="k"><span class="pip exp"></span> Expenses</div>
+      <div class="v exp">$0.00</div>
+    </div>
+
+    <div class="net">
+      <div class="net-top">
+        <span class="k">Net</span>
+        <span class="v">+$1,346.16</span>
+      </div>
+      <div class="flow">
+        <div class="in"></div>
+        <div class="out"></div>
+      </div>
+      <div class="flow-meta">
+        <span>100% kept</span>
+        <span>0% spent</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- NEXT PAYCHECK: connects home to the income projection engine -->
+  <div class="paycheck">
+    <div class="icon">💼</div>
+    <div class="body">
+      <div class="t1">Next paycheck — Day Job</div>
+      <div class="t2">Biweekly Friday</div>
+    </div>
+    <div>
+      <div class="amt">$1,346.17</div>
+      <div class="when">Fri, Jun 12 · in 14 days</div>
+    </div>
+  </div>
+
+  <!-- ACCOUNTS -->
+  <div class="section-label">
+    <h2>Accounts</h2>
+    <span class="month-pick" style="color:var(--muted)">Manage ›</span>
+  </div>
+
+  <div class="acct">
+    <div class="acct-row">
+      <div class="acct-ic">🏦</div>
+      <div>
+        <div class="acct-name">BPPR Check Account<span class="acct-type">Checking</span></div>
+      </div>
+      <div class="acct-bal">$1,746.16</div>
+    </div>
+    <!-- second row shown faded to illustrate multi-account layout -->
+    <div class="acct-row" style="opacity:.55">
+      <div class="acct-ic">💰</div>
+      <div>
+        <div class="acct-name">Savings<span class="acct-type">Savings</span></div>
+      </div>
+      <div class="acct-bal">$0.00</div>
+    </div>
+  </div>
+
+  <!-- QUICK ACTIONS -->
+  <div class="fab">
+    <button class="primary">＋ Expense</button>
+    <button>＋ Income</button>
+    <button>⇄ Transfer</button>
+  </div>
+</body>
+</html>

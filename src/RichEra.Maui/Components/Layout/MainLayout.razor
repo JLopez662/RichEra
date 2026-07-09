@@ -1,0 +1,59 @@
+@inherits LayoutComponentBase
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@inject RichEra.Infrastructure.Persistence.DatabaseInitializer DbInit
+@implements IDisposable
+
+<div class="page">
+    <main>
+        @* Stable element (NO @key) so navigation does not tear down and
+           re-create the routed page. The fade transition is re-triggered by a
+           tiny JS class-restart on each LocationChanged (window.n2fPageFade),
+           which replays the CSS animation without recreating the component. *@
+        <article id="app-content" class="content page-fade">
+            @if (!_ready)
+            {
+                <AppLoading />
+            }
+            else if (_initError is not null)
+            {
+                <p style="text-align: center; padding: 20vh 16px 0; opacity: .75;">Couldn't open your data: @_initError</p>
+            }
+            else
+            {
+                @Body
+            }
+        </article>
+    </main>
+
+    @* Floating tab bar replaces the hamburger sidebar. Pages get extra bottom
+       padding (MainLayout scoped CSS) so it never covers their content. *@
+    <BottomTabBar />
+</div>
+
+@code {
+    private bool _ready;
+    private string? _initError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Nav.LocationChanged += OnLocationChanged;
+
+        // Wait for the background migration/seed (already running, kicked off in MauiProgram)
+        // before rendering any page, so pages never query the DB before it is ready.
+        try { await DbInit.EnsureInitializedAsync(); }
+        catch (Exception ex) { _initError = ex.Message; }
+        _ready = true;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+        => _ = ReplayFadeAsync();
+
+    private async Task ReplayFadeAsync()
+    {
+        try { await JS.InvokeVoidAsync("n2fPageFade"); }
+        catch { /* JS not ready / nav aborted — the animation is cosmetic */ }
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}

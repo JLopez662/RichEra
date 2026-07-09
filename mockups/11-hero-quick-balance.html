@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup 11 — Quick balance update from Home</title>
+<style>
+  /* ===== Aurora / Midnight tokens (copied from wwwroot/css/theme.css) ===== */
+  :root,
+  :root[data-theme="light"] {
+    --app-bg: linear-gradient(170deg, #eafff6 0%, #eef2ff 48%, #fdeafe 100%);
+    --surface: rgba(255, 255, 255, 0.80);
+    --surface-2: rgba(255, 255, 255, 0.62);
+    --surface-3: #eef2f7;
+    --surface-solid: rgba(255, 255, 255, 0.92);
+    --text: #0f172a;
+    --text-muted: #5b6678;
+    --text-faint: #8a94a6;
+    --border: rgba(15, 23, 42, 0.09);
+    --border-strong: rgba(15, 23, 42, 0.15);
+    --inner-top: rgba(255, 255, 255, 0.85);
+    --shadow: 0 18px 38px -26px rgba(15, 23, 42, 0.40);
+    --shadow-sm: 0 4px 14px -10px rgba(15, 23, 42, 0.22);
+    --accent: #10b981;
+    --accent-2: #38bdf8;
+    --accent-ink: #047857;
+    --accent-soft: rgba(16, 185, 129, 0.13);
+    --accent-line: rgba(16, 185, 129, 0.30);
+    --grad: linear-gradient(96deg, #10b981, #06b6d4);
+    --grad-shadow: rgba(6, 182, 212, 0.40);
+    --hero-grad: linear-gradient(150deg, #0f766e 0%, #0e7490 52%, #1e40af 125%);
+    --blue-soft: rgba(56, 189, 248, 0.15);   --blue-ink: #0369a1;
+    --rose: #ef4444;
+    --rose-soft: rgba(239, 68, 68, 0.13);
+    --rose-ink: #b91c1c;
+    --track: rgba(15, 23, 42, 0.08);
+    --field-bg: #ffffff;
+    --radius: 18px;
+    --radius-lg: 22px;
+    --radius-sm: 12px;
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --app-bg: radial-gradient(125% 85% at 50% -10%, #16233a 0%, #0b1322 55%, #05080f 100%);
+    --surface: rgba(22, 29, 43, 0.74);
+    --surface-2: rgba(30, 39, 56, 0.60);
+    --surface-3: rgba(255, 255, 255, 0.06);
+    --surface-solid: #121b2e;
+    --text: #e9eef6;
+    --text-muted: #97a3b6;
+    --text-faint: #6c7889;
+    --border: rgba(255, 255, 255, 0.11);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --inner-top: rgba(255, 255, 255, 0.06);
+    --shadow: 0 18px 44px -24px rgba(0, 0, 0, 0.80);
+    --shadow-sm: 0 6px 18px -12px rgba(0, 0, 0, 0.70);
+    --accent: #34d399;
+    --accent-2: #38bdf8;
+    --accent-ink: #6ee7b7;
+    --accent-soft: rgba(52, 211, 153, 0.16);
+    --accent-line: rgba(52, 211, 153, 0.32);
+    --grad: linear-gradient(96deg, #34d399, #22d3ee);
+    --grad-shadow: rgba(34, 211, 238, 0.38);
+    --hero-grad: linear-gradient(150deg, #134e4a 0%, #155e75 55%, #1e3a8a 125%);
+    --blue-soft: rgba(56, 189, 248, 0.16);   --blue-ink: #7dd3fc;
+    --rose: #fb7185;
+    --rose-soft: rgba(251, 113, 133, 0.16);
+    --rose-ink: #fda4af;
+    --track: rgba(255, 255, 255, 0.10);
+    --field-bg: #0c1424;
+  }
+
+  * { box-sizing: border-box; }
+  html { background: var(--app-bg); min-height: 100%; }
+  body {
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: transparent;
+    color: var(--text);
+    padding: 16px 16px 40px;
+    max-width: 520px;
+  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0 18px; }
+  .back { color: var(--text-muted); text-decoration: none; font-size: 14px; }
+  .topbar .tag { color: var(--text-muted); font-size: 13px; margin-left: auto; }
+  h1 { font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
+  p.lead { color: var(--text-muted); font-size: 13.5px; line-height: 1.55; margin: 0 0 8px; }
+  .caption {
+    color: var(--text-faint); font-size: 11.5px; font-weight: 700; text-align: center;
+    margin: 32px 0 14px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .caption:first-of-type { margin-top: 22px; }
+
+  svg.ic { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* ===== Page header replica (pg-head / wordmark, from theme.css) ===== */
+  .pg-head { display: flex; align-items: center; justify-content: space-between; margin: 0 2px 18px; gap: 12px; }
+  .wordmark { font-size: 21px; font-weight: 800; letter-spacing: -0.02em; color: var(--text); }
+  .wordmark b { font-weight: 800; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .app-icon-btn {
+    width: 38px; height: 38px; flex: 0 0 auto; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: var(--surface); color: var(--accent-ink);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 0 var(--inner-top) inset;
+    cursor: pointer;
+  }
+  .app-icon-btn:hover { border-color: var(--accent-line); }
+  .app-icon-btn svg.ic { width: 17px; height: 17px; }
+  :root[data-theme="dark"] .ico-moon { display: none; }
+  :root[data-theme="light"] .ico-sun { display: none; }
+
+  /* ===== Balance hero replica (from Home.razor.css) ===== */
+  .hero {
+    position: relative; overflow: hidden;
+    background: var(--hero-grad);
+    border-radius: var(--radius-lg);
+    padding: 20px 20px 18px;
+    color: #fff;
+    box-shadow: 0 20px 44px -22px var(--grad-shadow), 0 1px 0 rgba(255, 255, 255, 0.12) inset;
+  }
+  .hero::after {
+    content: "";
+    position: absolute; right: -40px; top: -60px;
+    width: 200px; height: 200px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.22), transparent 70%);
+    pointer-events: none;
+  }
+  .hero-label { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255, 255, 255, 0.80); }
+  .hero-balance { font-size: 42px; font-weight: 800; letter-spacing: -0.02em; margin: 7px 0 0; line-height: 1; }
+  .hero-sub {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 650; color: #eafff6;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    padding: 5px 11px 5px 9px; border-radius: 999px; margin-top: 13px;
+  }
+  .hero-sub svg.ic { width: 15px; height: 15px; }
+
+  /* NEW — Option A: round glass edit button pinned to the hero's corner */
+  .hero-edit {
+    position: absolute; top: 13px; right: 13px; z-index: 1;
+    width: 34px; height: 34px; border-radius: 50%; padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: rgba(255, 255, 255, 0.14);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    color: #fff; cursor: pointer;
+    transition: transform 0.14s ease, background 0.2s ease;
+  }
+  .hero-edit:hover { background: rgba(255, 255, 255, 0.26); }
+  .hero-edit:active { transform: scale(0.88); }
+  .hero-edit svg.ic { width: 15px; height: 15px; }
+
+  /* NEW — Option B: "Update" chip sitting next to the monthly-delta pill */
+  .hero-chips { display: flex; align-items: center; gap: 8px; margin-top: 13px; }
+  .hero-chips .hero-sub { margin-top: 0; }
+  .hero-update-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 13px; font-weight: 700; color: #fff;
+    background: rgba(255, 255, 255, 0.10);
+    border: 1px dashed rgba(255, 255, 255, 0.38);
+    padding: 5px 12px 5px 10px; border-radius: 999px; cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .hero-update-chip:hover { background: rgba(255, 255, 255, 0.22); }
+  .hero-update-chip svg.ic { width: 13px; height: 13px; }
+
+  /* ===== Bottom sheet replica (sb-* vocabulary from Accounts.razor.css) ===== */
+  .sb-sheet {
+    background: var(--surface-solid); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 18px 18px 20px;
+    width: 100%; max-width: 480px; margin: 0 auto; box-shadow: var(--shadow);
+  }
+  .grip { width: 38px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto 16px; }
+  .sb-title { font-size: 17px; font-weight: 750; margin: 0 0 2px; color: var(--text); }
+  .sb-sub { font-size: 13px; color: var(--text-muted); margin: 0 0 16px; }
+  .hint { color: var(--text-muted); font-size: 12px; line-height: 1.45; margin: 6px 2px 0; }
+
+  /* Per-account quick-reconcile rows */
+  .qb-list {
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); overflow: hidden; margin-bottom: 14px;
+  }
+  .qb-row { display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-bottom: 1px solid var(--border); }
+  .qb-row:last-child { border-bottom: none; }
+  .tile {
+    flex: 0 0 auto; width: 38px; height: 38px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .tile svg.ic { width: 19px; height: 19px; }
+  .tile--green { background: var(--accent-soft); color: var(--accent-ink); }
+  .tile--blue  { background: var(--blue-soft);   color: var(--blue-ink); }
+  .qb-mid { flex: 1; min-width: 0; }
+  .qb-name { font-size: 14px; font-weight: 650; color: var(--text); }
+  .qb-type { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+  .qb-amt { text-align: right; }
+  .qb-amt input {
+    width: 122px; text-align: right;
+    background: var(--field-bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 9px 10px; font-size: 15px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .qb-amt input:focus { outline: none; border-color: var(--accent-line); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .qb-delta { font-size: 11px; font-weight: 700; margin-top: 4px; min-height: 13px; visibility: hidden; }
+  .qb-delta.inc { color: var(--accent-ink); visibility: visible; }
+  .qb-delta.exp { color: var(--rose-ink); visibility: visible; }
+
+  /* current → new → adjustment readout */
+  .sb-recon { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 4px 0; margin-bottom: 14px; }
+  .sb-recon .line { display: flex; justify-content: space-between; align-items: center; padding: 11px 16px; font-size: 14px; }
+  .sb-recon .line + .line { border-top: 1px solid var(--border); }
+  .sb-recon .k { color: var(--text-muted); }
+  .sb-recon .v { font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+  .sb-recon .v.inc { color: var(--accent-ink); }
+  .sb-recon .v.exp { color: var(--rose-ink); }
+  .sb-recon .v.zero { color: var(--text-muted); }
+
+  /* record-as-transaction toggle */
+  .sb-opt { display: flex; align-items: center; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 12px; cursor: pointer; user-select: none; }
+  .sb-opt .txt { flex: 1; }
+  .sb-opt .txt .t { font-size: 14px; font-weight: 600; color: var(--text); }
+  .sb-opt .txt .d { font-size: 12px; color: var(--text-muted); margin-top: 2px; line-height: 1.4; }
+  .switch { width: 44px; height: 26px; border-radius: 999px; background: var(--accent); position: relative; flex-shrink: 0; transition: background 0.15s; }
+  .switch::after { content: ""; position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: left 0.15s, right 0.15s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .switch.off { background: var(--border-strong); }
+  .switch.off::after { right: auto; left: 3px; }
+
+  .sb-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .sb-actions button { flex: 1; border-radius: 12px; padding: 13px; font-size: 14px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); }
+  .sb-actions .save { background: var(--grad); color: #06281f; border-color: transparent; box-shadow: 0 10px 22px -10px var(--grad-shadow); }
+  .sb-actions .save:disabled { opacity: 0.5; cursor: default; }
+  .sb-actions .cancel { background: var(--surface-2); color: var(--text); }
+
+  /* Variant B big amount field (static) */
+  .sb-amount { text-align: center; margin: 4px 0 14px; }
+  .sb-amount .lbl { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .sb-amount .val { font-size: 38px; font-weight: 750; letter-spacing: -0.02em; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .sb-amount .val .cur { color: var(--text-muted); font-size: 23px; font-weight: 700; vertical-align: 6px; margin-right: 2px; }
+  .sb-field { margin-bottom: 12px; }
+  .sb-field > label { display: block; font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 6px; }
+  .sb-field .control {
+    background: var(--field-bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 9px; padding: 11px 13px; font-size: 14.5px; font-weight: 600; width: 100%;
+    display: flex; align-items: center; gap: 9px;
+  }
+  .sb-field .control svg.ic { width: 16px; height: 16px; color: var(--text-muted); }
+  .sb-field .control .chev { margin-left: auto; }
+
+  /* attention pulse when jumping from the hero button to the sheet */
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 var(--accent-line); } 100% { box-shadow: 0 0 0 16px transparent; } }
+  .pulse { animation: pulse 0.7s ease-out 2; }
+
+  /* implementation notes */
+  .notes { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 4px 18px 14px; box-shadow: var(--shadow-sm); }
+  .notes h3 { font-size: 13px; margin: 14px 0 4px; color: var(--text); }
+  .notes ul { margin: 6px 0 0; padding-left: 18px; }
+  .notes li { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; margin-bottom: 7px; }
+  .notes b { color: var(--text); font-weight: 650; }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="index.html">‹ All mockups</a>
+    <span class="tag">11 · Quick balance update</span>
+    <button class="app-icon-btn" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
+      <svg class="ic ico-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      <svg class="ic ico-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+  </div>
+
+  <h1>Update total balance, right from Home</h1>
+  <p class="lead">
+    The hero total is a <b>sum of your accounts</b>, so "setting" it means telling the app what each
+    account really has. One tap on the hero opens a quick-reconcile sheet; type the real balances and
+    the new total follows. Same adjustment machinery the Accounts → Reconcile flow already uses.
+  </p>
+
+  <!-- ============ ENTRY POINT — OPTION A ============ -->
+  <div class="caption">Entry point · Option A — corner edit button (recommended)</div>
+
+  <div class="pg-head">
+    <div class="wordmark">Rich <b>Era</b></div>
+    <button class="app-icon-btn" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle theme">
+      <svg class="ic ico-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+      <svg class="ic ico-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+    </button>
+  </div>
+
+  <div class="hero">
+    <button class="hero-edit" onclick="openSheet()" title="Update balance" aria-label="Update balance">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+    </button>
+    <div class="hero-label">Total balance</div>
+    <div class="hero-balance">$724.59</div>
+    <div class="hero-sub">
+      <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+      −$62.80 this month
+    </div>
+  </div>
+
+  <!-- ============ ENTRY POINT — OPTION B ============ -->
+  <div class="caption">Option B — "Update" chip beside the monthly pill</div>
+
+  <div class="hero">
+    <div class="hero-label">Total balance</div>
+    <div class="hero-balance">$724.59</div>
+    <div class="hero-chips">
+      <div class="hero-sub">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>
+        −$62.80 this month
+      </div>
+      <button class="hero-update-chip" onclick="openSheet()">
+        <svg class="ic" viewBox="0 0 24 24"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+        Update
+      </button>
+    </div>
+  </div>
+
+  <!-- ============ THE SHEET (LIVE DEMO) ============ -->
+  <div class="caption">↓ Tapping it opens this sheet — it's live, type in the fields</div>
+
+  <div class="sb-sheet" id="qb-sheet">
+    <div class="grip"></div>
+
+    <div class="sb-title">Update total balance</div>
+    <div class="sb-sub">Enter what each account really has — the total follows.</div>
+
+    <div class="qb-list">
+      <div class="qb-row">
+        <div class="tile tile--blue"><svg class="ic" viewBox="0 0 24 24"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></div>
+        <div class="qb-mid">
+          <div class="qb-name">BPPR Check</div>
+          <div class="qb-type">Checking</div>
+        </div>
+        <div class="qb-amt">
+          <input type="number" step="0.01" value="604.59" data-stored="604.59" aria-label="BPPR Check balance" />
+          <div class="qb-delta"></div>
+        </div>
+      </div>
+      <div class="qb-row">
+        <div class="tile tile--green"><svg class="ic" viewBox="0 0 24 24"><path d="M19 5c-1.5 0-2.8 1.4-3 2-3.5-1.5-11-.3-11 5 0 1.8 0 3 2 4.5V20h4v-2h3v2h4v-4c1-.5 1.7-1 2-2h2v-4h-2c0-1-.5-1.5-1-2V5z"/><path d="M2 9v1c0 1.1.9 2 2 2h1"/><path d="M16 11h.01"/></svg></div>
+        <div class="qb-mid">
+          <div class="qb-name">Savings</div>
+          <div class="qb-type">Savings</div>
+        </div>
+        <div class="qb-amt">
+          <input type="number" step="0.01" value="100.00" data-stored="100.00" aria-label="Savings balance" />
+          <div class="qb-delta"></div>
+        </div>
+      </div>
+      <div class="qb-row">
+        <div class="tile tile--green"><svg class="ic" viewBox="0 0 24 24"><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01"/><path d="M18 12h.01"/></svg></div>
+        <div class="qb-mid">
+          <div class="qb-name">Cash</div>
+          <div class="qb-type">Cash</div>
+        </div>
+        <div class="qb-amt">
+          <input type="number" step="0.01" value="20.00" data-stored="20.00" aria-label="Cash balance" />
+          <div class="qb-delta"></div>
+        </div>
+      </div>
+    </div>
+    <p class="hint" style="margin:-6px 2px 14px;">Use each account's <b>posted</b> balance from your bank — not the "available" figure.</p>
+
+    <div class="sb-recon">
+      <div class="line">
+        <span class="k">Total in app</span>
+        <span class="v" id="recon-current">$724.59</span>
+      </div>
+      <div class="line">
+        <span class="k">New total</span>
+        <span class="v" id="recon-new">$724.59</span>
+      </div>
+      <div class="line">
+        <span class="k">Adjustment</span>
+        <span class="v zero" id="recon-adj">$0.00</span>
+      </div>
+    </div>
+
+    <div class="sb-opt" onclick="toggleRecord()">
+      <div class="txt">
+        <div class="t">Record adjustments as transactions</div>
+        <div class="d" id="opt-hint">Balances match — nothing to record.</div>
+      </div>
+      <div class="switch" id="opt-switch"></div>
+    </div>
+
+    <div class="sb-actions">
+      <button class="cancel">Cancel</button>
+      <button class="save" id="save-btn" disabled>Save balance</button>
+    </div>
+  </div>
+
+  <!-- ============ ALTERNATIVE SHEET (STATIC) ============ -->
+  <div class="caption">Alternative — one number, difference lands in a picked account</div>
+
+  <div class="sb-sheet">
+    <div class="grip"></div>
+
+    <div class="sb-title">Update total balance</div>
+    <div class="sb-sub">Type the total you really have; the difference is booked to one account.</div>
+
+    <div class="sb-amount">
+      <div class="lbl">New total balance</div>
+      <div class="val"><span class="cur">$</span>698.12</div>
+    </div>
+
+    <div class="sb-recon">
+      <div class="line">
+        <span class="k">Total in app</span>
+        <span class="v">$724.59</span>
+      </div>
+      <div class="line">
+        <span class="k">Difference</span>
+        <span class="v exp">−$26.47</span>
+      </div>
+    </div>
+
+    <div class="sb-field">
+      <label>Apply difference to</label>
+      <div class="control">
+        <svg class="ic" viewBox="0 0 24 24"><line x1="3" x2="21" y1="22" y2="22"/><line x1="6" x2="6" y1="18" y2="11"/><line x1="10" x2="10" y1="18" y2="11"/><line x1="14" x2="14" y1="18" y2="11"/><line x1="18" x2="18" y1="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg>
+        BPPR Check · Checking
+        <svg class="ic chev" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+
+    <div class="sb-opt">
+      <div class="txt">
+        <div class="t">Record adjustment as a transaction</div>
+        <div class="d">Adds a −$26.47 "Balance adjustment" to BPPR Check on today's date.</div>
+      </div>
+      <div class="switch"></div>
+    </div>
+    <p class="hint">Fastest possible flow — but if the drift really lives in another account, that account's history stays wrong and BPPR absorbs the blame. Kept here for comparison; the per-account sheet above is the honest default.</p>
+
+    <div class="sb-actions">
+      <button class="cancel">Cancel</button>
+      <button class="save">Save balance</button>
+    </div>
+  </div>
+
+  <!-- ============ NOTES ============ -->
+  <div class="caption">Implementation notes</div>
+
+  <div class="notes">
+    <h3>What this reuses</h3>
+    <ul>
+      <li>Saving calls the existing <b>AccountSvc.SetBalanceAsync</b> once per <i>changed</i> account — same DTO, same adjustment transaction, <b>no schema change</b>. Untouched rows are skipped.</li>
+      <li>The toggle maps to the existing <b>RecordAdjustment</b> flag; adjustments already stay out of monthly income/spending, so the −$62.80 pill won't jump when you reconcile.</li>
+      <li>The sheet is the same <b>sb-*</b> bottom-sheet pattern as Accounts, promoted into a shared component both pages use.</li>
+    </ul>
+    <h3>Behaviour details</h3>
+    <ul>
+      <li>With a <b>single account</b>, the sheet is just one row — identical to today's Reconcile, one tap closer.</li>
+      <li>First row autofocuses with its value selected, so the common case ("my checking is actually $X") is tap → type → save.</li>
+      <li>Save button stays disabled until something actually changes.</li>
+    </ul>
+  </div>
+
+<script>
+  function toggleTheme() {
+    const root = document.documentElement;
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+  }
+
+  function openSheet() {
+    const sheet = document.getElementById('qb-sheet');
+    sheet.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    sheet.classList.remove('pulse');
+    void sheet.offsetWidth; // restart the animation
+    sheet.classList.add('pulse');
+    const first = sheet.querySelector('.qb-amt input');
+    setTimeout(() => { first.focus(); first.select(); }, 450);
+  }
+
+  const fmt = v => (v < -0.004 ? '−' : '') + '$' +
+    Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  let recordOn = true;
+
+  function toggleRecord() {
+    recordOn = !recordOn;
+    document.getElementById('opt-switch').classList.toggle('off', !recordOn);
+    recompute();
+  }
+
+  function recompute() {
+    let current = 0, next = 0, changed = 0;
+    document.querySelectorAll('#qb-sheet .qb-amt').forEach(cell => {
+      const input = cell.querySelector('input');
+      const stored = parseFloat(input.dataset.stored);
+      let val = parseFloat(input.value);
+      if (isNaN(val)) val = stored;
+      const delta = Math.round((val - stored) * 100) / 100;
+      current += stored;
+      next += val;
+
+      const chip = cell.querySelector('.qb-delta');
+      chip.className = 'qb-delta' + (delta > 0.004 ? ' inc' : delta < -0.004 ? ' exp' : '');
+      chip.textContent = delta > 0.004 ? '+' + fmt(delta) : delta < -0.004 ? fmt(delta) : '';
+      if (Math.abs(delta) > 0.004) changed++;
+    });
+
+    const adj = Math.round((next - current) * 100) / 100;
+    document.getElementById('recon-current').textContent = fmt(current);
+    document.getElementById('recon-new').textContent = fmt(next);
+    const adjEl = document.getElementById('recon-adj');
+    adjEl.className = 'v ' + (adj > 0.004 ? 'inc' : adj < -0.004 ? 'exp' : 'zero');
+    adjEl.textContent = adj > 0.004 ? '+' + fmt(adj) : fmt(adj);
+
+    const save = document.getElementById('save-btn');
+    save.disabled = changed === 0;
+    save.textContent = changed > 1 ? `Save ${changed} balances` : 'Save balance';
+
+    document.getElementById('opt-hint').textContent =
+      changed === 0 ? 'Balances match — nothing to record.'
+      : !recordOn ? 'Off — balances are overwritten silently. No transactions.'
+      : changed === 1 ? 'Adds one "Balance adjustment" on today\'s date, so your history still adds up. Not counted in monthly income or spending.'
+      : `Adds ${changed} "Balance adjustment" entries on today's date, so your history still adds up. Not counted in monthly income or spending.`;
+  }
+
+  document.querySelectorAll('#qb-sheet .qb-amt input')
+    .forEach(i => i.addEventListener('input', recompute));
+  recompute();
+</script>
+</body>
+</html>

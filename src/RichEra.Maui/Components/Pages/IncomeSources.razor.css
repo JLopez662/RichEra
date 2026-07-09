@@ -1,0 +1,69 @@
+/* ===== ADD ROW ===== */
+.add-row { display: flex; gap: 10px; margin-bottom: 18px; }
+.add-btn {
+    flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border-radius: var(--radius-sm); padding: 13px; font-size: 14px; font-weight: 700;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+    box-shadow: var(--shadow-sm); cursor: pointer;
+}
+.add-btn.income { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+.add-btn.expense { background: var(--rose-soft); border-color: var(--rose); color: var(--rose-ink); }
+.add-btn:active { transform: scale(0.99); }
+
+/* ===== SEARCH =====
+   Icon / input / clear are flex siblings inside the bordered box, so the spyglass
+   never overlaps the text or placeholder. */
+.search {
+    display: flex; align-items: center; gap: 9px;
+    border: 1px solid var(--border); border-radius: 13px;
+    background: var(--surface); padding: 0 12px; margin-bottom: 12px;
+    box-shadow: 0 1px 0 var(--inner-top) inset;
+}
+.search:focus-within { border-color: var(--accent-line); }
+.search-ic { flex-shrink: 0; display: inline-flex; color: var(--text-faint); }
+.search-input {
+    flex: 1; min-width: 0; border: 0; outline: none; background: transparent;
+    padding: 11px 0; color: var(--text); font-size: 14px;
+}
+.search-input::placeholder { color: var(--text-faint); }
+.search-clear {
+    flex-shrink: 0; display: inline-flex; padding: 5px; margin-right: -4px;
+    border: 0; background: transparent; color: var(--text-muted); cursor: pointer;
+}
+.search-clear:hover { color: var(--text); }
+
+/* ===== FILTER TOGGLE ===== */
+.seg { display: flex; background: var(--surface-3); border-radius: 12px; padding: 4px; margin-bottom: 18px; }
+.seg button {
+    flex: 1; border: 0; background: transparent; color: var(--text-muted);
+    padding: 9px; border-radius: 9px; font-size: 14px; font-weight: 650; cursor: pointer;
+}
+.seg button.active { background: var(--accent); color: #06281f; }
+
+/* ===== EMPTY STATE ===== */
+.empty-card {
+    text-align: center; padding: 30px 20px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.empty-card .tile { margin: 0 auto 12px; width: 48px; height: 48px; border-radius: 15px; }
+.empty-title { font-size: 16px; font-weight: 750; color: var(--text); }
+.empty-sub { font-size: 13px; color: var(--text-muted); margin-top: 5px; line-height: 1.5; max-width: 30ch; margin-left: auto; margin-right: auto; }
+
+/* ===== RULE LIST ===== */
+.rules { display: flex; flex-direction: column; gap: 11px; }
+.rule-card {
+    display: flex; align-items: center; gap: 13px; text-decoration: none;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow-sm);
+}
+.rule-card:hover { border-color: var(--accent-line); }
+.rule-card:active { transform: scale(0.995); }
+.rule-body { flex: 1; min-width: 0; }
+.rule-name { font-size: 15px; font-weight: 700; color: var(--text); }
+.rule-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rule-right { text-align: right; flex-shrink: 0; }
+.rule-amt { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
+.rule-amt.inc { color: var(--accent-ink); }
+.rule-amt.exp { color: var(--rose-ink); }
+.rule-cadence { font-size: 10.5px; color: var(--text-faint); margin-top: 2px; }

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Rich Era — Income mockups</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #1a2027;
+    --text: #e8edf2;
+    --muted: #8b95a3;
+    --accent: #2ecc71;
+    --border: #2a3340;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { margin: 0 0 8px; font-size: 28px; }
+  p.lead { color: var(--muted); margin: 0 0 32px; max-width: 640px; line-height: 1.5; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+    max-width: 1100px;
+  }
+  a.card {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  a.card:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .num { color: var(--accent); font-size: 14px; font-weight: 600; letter-spacing: 0.05em; }
+  h2 { margin: 8px 0 8px; font-size: 18px; }
+  p.desc { color: var(--muted); margin: 0; font-size: 14px; line-height: 1.5; }
+</style>
+</head>
+<body>
+  <h1>Rich Era — UI mockups</h1>
+  <p class="lead">
+    Standalone HTML sketches, one design question each. Built mobile-first since
+    you'll use this on a phone. Newer ones (11+) use the real Aurora/Midnight
+    theme tokens to match the app.
+  </p>
+
+  <div class="grid">
+    <a class="card" href="01-setup-form.html">
+      <div class="num">01</div>
+      <h2>Setup form + projection</h2>
+      <p class="desc">Define a recurring rule once. See the next 6 paychecks generated live. Each becomes a real, editable transaction.</p>
+    </a>
+    <a class="card" href="02-paycheck-ledger.html">
+      <div class="num">02</div>
+      <h2>Paycheck ledger</h2>
+      <p class="desc">Monthly groups. Received paychecks vs projected, with one-tap edit to override an amount when it differs from the rule.</p>
+    </a>
+    <a class="card" href="03-calendar.html">
+      <div class="num">03</div>
+      <h2>Calendar view</h2>
+      <p class="desc">Visual month grid with paychecks pinned to their Friday. Projected ones look faded. Tap to edit.</p>
+    </a>
+    <a class="card" href="04-forecast-dashboard.html">
+      <div class="num">04</div>
+      <h2>Forecast dashboard</h2>
+      <p class="desc">Power-user view. Projected vs actual per month, variance, plus auto-flagging of "three-paycheck months."</p>
+    </a>
+    <a class="card" href="05-home-dashboard.html">
+      <div class="num">05</div>
+      <h2>Home dashboard redesign</h2>
+      <p class="desc">Balance hero up top, compact income/expense/net with a flow bar, next-paycheck card, cleaner accounts, and a quick-action bar.</p>
+    </a>
+    <a class="card" href="06-transactions.html">
+      <div class="num">06</div>
+      <h2>Transactions / expense UI</h2>
+      <p class="desc">Month stepper, spent/income/net chips, day-grouped list with category icons, and a mobile add-expense sheet with an amount field and category chips.</p>
+    </a>
+    <a class="card" href="07-set-balance.html">
+      <div class="num">07</div>
+      <h2>Set current balance</h2>
+      <p class="desc">Directly correct an account's stored balance. Hero "new balance" field, a current→adjustment readout, and an optional toggle to log the difference as a transaction.</p>
+    </a>
+    <a class="card" href="08-accounts.html">
+      <div class="num">08</div>
+      <h2>Accounts screen redesign</h2>
+      <p class="desc">The Bootstrap table doesn't fit a phone. Two mobile-first replacements: a compact list with a ⋯ action sheet, and expanded cards with always-visible buttons. Plus a net-worth header.</p>
+    </a>
+    <a class="card" href="09-transaction-detail.html">
+      <div class="num">09</div>
+      <h2>Transaction detail modal</h2>
+      <p class="desc">Tapping a row opens a read-only detail modal in place over the list before editing — full untruncated description, bank reference (FITID), and source. Adapts for imported, manual, and transfer rows.</p>
+    </a>
+    <a class="card" href="10-recurring-from-transaction.html">
+      <div class="num">10</div>
+      <h2>Mark a transaction recurring</h2>
+      <p class="desc">A Repeat toggle in the detail modal: flip it on, pick a period (weekly / every 2 weeks / monthly), and it creates a recurring rule pre-filled from the transaction. Shows off, picking, and already-recurring states.</p>
+    </a>
+    <a class="card" href="11-hero-quick-balance.html">
+      <div class="num">11</div>
+      <h2>Quick balance update from Home</h2>
+      <p class="desc">An edit button on the balance hero (two placements) opening a live quick-reconcile sheet: type each account's real balance, the new total follows, adjustments reuse the existing reconcile machinery. Aurora/Midnight themed.</p>
+    </a>
+    <a class="card" href="12-money-log-concept.html">
+      <div class="num">12</div>
+      <h2>Money Log — Lose It! for money</h2>
+      <p class="desc">Full concept gallery: budget ring + money groups (the Log), the Money Facts label with debt/growth micros and %-of-budget, the item Library absorbing Shop + Income sources, editor with autofill, Home integration, and the page-restructure map with build phases.</p>
+    </a>
+  </div>
+</body>
+</html>

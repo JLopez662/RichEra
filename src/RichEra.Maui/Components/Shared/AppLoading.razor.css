@@ -1,0 +1,59 @@
+.boot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    min-height: 80vh;
+}
+
+.boot-logo {
+    width: 92px;
+    height: 78px;
+    animation: boot-pulse 1.9s ease-in-out infinite;
+}
+
+@keyframes boot-pulse {
+    0%, 100% { transform: scale(1); opacity: .9; }
+    50% { transform: scale(1.06); opacity: 1; }
+}
+
+.boot-track {
+    width: 140px;
+    height: 5px;
+    border-radius: 3px;
+    background: rgba(127, 131, 153, .22);
+    overflow: hidden;
+    position: relative;
+}
+
+.boot-fill {
+    position: absolute;
+    inset: 0 auto 0 0;
+    height: 100%;
+    width: 42%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #2DD4BF, #38BDF8, #8B5CF6, #F472B6);
+    animation: boot-slide 1.35s ease-in-out infinite;
+}
+
+@keyframes boot-slide {
+    0% { transform: translateX(-115%); }
+    100% { transform: translateX(330%); }
+}
+
+/* Inherit the themed text color from .content; only the wordmark accent is fixed gold. */
+.boot-wm {
+    font-size: 16px;
+    letter-spacing: .4px;
+}
+
+.boot-wm b {
+    color: #F5C451;
+    font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .boot-logo, .boot-fill { animation: none; }
+    .boot-fill { width: 100%; }
+}

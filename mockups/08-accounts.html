@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup 08 — Accounts screen</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --bg-2: #161c24;
+    --card: #1a2027;
+    --card-2: #232b35;
+    --text: #e8edf2;
+    --muted: #8b95a3;
+    --accent: #2ecc71;
+    --accent-hover: #5edc8c;
+    --accent-soft: rgba(46,204,113,0.12);
+    --danger: #e74c3c;
+    --danger-soft: rgba(231,76,60,0.14);
+    --border: #2a3340;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 520px;
+    margin: 0 auto;
+  }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 6px 0 18px; }
+  .back { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .caption { color: var(--muted); font-size: 12px; text-align: center; margin: 34px 0 14px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .caption.first { margin-top: 8px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+
+  /* NET WORTH HERO */
+  .networth {
+    background: linear-gradient(160deg, var(--card-2), var(--card));
+    border: 1px solid var(--border); border-radius: 16px;
+    padding: 16px 18px; margin-bottom: 14px;
+  }
+  .networth .k { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; }
+  .networth .v { font-size: 30px; font-weight: 800; letter-spacing: -0.02em; margin-top: 4px; }
+  .networth .meta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* ADD BUTTON */
+  .add {
+    width: 100%; border: 1px dashed var(--border); background: transparent; color: var(--accent);
+    border-radius: 12px; padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer; margin-bottom: 16px;
+  }
+  .add:hover { border-color: var(--accent); background: var(--accent-soft); }
+
+  /* ===== VARIATION A — compact list + kebab ===== */
+  .acct-list { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; }
+  .acct { display: flex; align-items: center; gap: 12px; padding: 13px 14px; border-bottom: 1px solid var(--border); }
+  .acct:last-child { border-bottom: none; }
+  .acct .ic { width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; background: var(--card-2); display: grid; place-items: center; font-size: 20px; }
+  .acct .mid { flex: 1; min-width: 0; }
+  .acct .name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .acct .type { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .acct .right { text-align: right; flex-shrink: 0; }
+  .acct .bal { font-size: 16px; font-weight: 700; }
+  .acct .bal.neg { color: var(--danger); }
+  .acct .open { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .acct .kebab { width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; border: 1px solid var(--border); background: var(--card-2); color: var(--muted); display: grid; place-items: center; font-size: 18px; cursor: pointer; margin-left: 2px; }
+  .acct .kebab:hover { border-color: var(--accent); color: var(--text); }
+
+  /* ACTION SHEET */
+  .sheet { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 14px 12px 12px; }
+  .grip { width: 38px; height: 4px; border-radius: 2px; background: var(--card-2); margin: 0 auto 12px; }
+  .sheet-head { display: flex; align-items: center; gap: 12px; padding: 4px 8px 12px; border-bottom: 1px solid var(--border); margin-bottom: 6px; }
+  .sheet-head .ic { width: 38px; height: 38px; border-radius: 11px; background: var(--card-2); display: grid; place-items: center; font-size: 18px; }
+  .sheet-head .name { font-size: 15px; font-weight: 700; }
+  .sheet-head .type { font-size: 12px; color: var(--muted); }
+  .act { display: flex; align-items: center; gap: 12px; padding: 13px 10px; font-size: 15px; cursor: pointer; border-radius: 10px; }
+  .act:hover { background: var(--card-2); }
+  .act .ai { width: 24px; text-align: center; }
+  .act.danger { color: var(--danger); }
+
+  /* ===== VARIATION B — expanded cards with inline actions ===== */
+  .cards { display: flex; flex-direction: column; gap: 12px; }
+  .acard { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; }
+  .acard .top { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .acard .ic { width: 44px; height: 44px; border-radius: 12px; flex-shrink: 0; background: var(--card-2); display: grid; place-items: center; font-size: 21px; }
+  .acard .name { font-size: 16px; font-weight: 700; }
+  .acard .badge { display: inline-block; font-size: 11px; color: var(--muted); background: var(--card-2); border: 1px solid var(--border); border-radius: 6px; padding: 1px 8px; margin-top: 3px; }
+  .acard .bal-block { margin-left: auto; text-align: right; }
+  .acard .bal { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+  .acard .bal.neg { color: var(--danger); }
+  .acard .open { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .acard .btns { display: flex; gap: 8px; }
+  .acard .btns button { flex: 1; border-radius: 10px; padding: 10px; font-size: 13px; font-weight: 700; cursor: pointer; border: 1px solid var(--border); background: var(--card-2); color: var(--text); }
+  .acard .btns button.primary { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .acard .btns button:hover { border-color: var(--accent); }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="index.html">‹ All mockups</a>
+    <span style="color:var(--muted);font-size:13px;">08 · Accounts</span>
+  </div>
+
+  <h1>Accounts</h1>
+  <p class="sub">The table doesn't fit a phone — these two layouts drop it for cards. Compare and pick one.</p>
+
+  <!-- ============ VARIATION A ============ -->
+  <div class="caption first">Variation A · Compact list + ⋯ menu</div>
+
+  <div class="networth">
+    <div class="k">Total balance</div>
+    <div class="v">$9,432.78</div>
+    <div class="meta">3 accounts</div>
+  </div>
+
+  <button class="add">＋ Add account</button>
+
+  <div class="acct-list">
+    <div class="acct">
+      <div class="ic">🏦</div>
+      <div class="mid">
+        <div class="name">BPPR Check</div>
+        <div class="type">Checking</div>
+      </div>
+      <div class="right">
+        <div class="bal">$312.78</div>
+        <div class="open">opening $0.00</div>
+      </div>
+      <div class="kebab">⋯</div>
+    </div>
+    <div class="acct">
+      <div class="ic">💰</div>
+      <div class="mid">
+        <div class="name">Savings</div>
+        <div class="type">Savings</div>
+      </div>
+      <div class="right">
+        <div class="bal">$9,000.00</div>
+        <div class="open">opening $9,000.00</div>
+      </div>
+      <div class="kebab">⋯</div>
+    </div>
+    <div class="acct">
+      <div class="ic">💳</div>
+      <div class="mid">
+        <div class="name">Credit Card</div>
+        <div class="type">Credit card</div>
+      </div>
+      <div class="right">
+        <div class="bal neg">−$120.00</div>
+        <div class="open">opening $0.00</div>
+      </div>
+      <div class="kebab">⋯</div>
+    </div>
+  </div>
+
+  <!-- ACTION SHEET for variation A -->
+  <div class="caption">↓ Tapping “⋯” opens this</div>
+  <div class="sheet">
+    <div class="grip"></div>
+    <div class="sheet-head">
+      <div class="ic">🏦</div>
+      <div>
+        <div class="name">BPPR Check</div>
+        <div class="type">Checking · $312.78</div>
+      </div>
+    </div>
+    <div class="act"><span class="ai">✎</span> Set balance</div>
+    <div class="act"><span class="ai">📝</span> Edit name &amp; type</div>
+    <div class="act"><span class="ai">📂</span> View transactions</div>
+    <div class="act danger"><span class="ai">🗄</span> Archive account</div>
+  </div>
+
+  <!-- ============ VARIATION B ============ -->
+  <div class="caption">Variation B · Expanded cards, buttons always visible</div>
+
+  <div class="cards">
+    <div class="acard">
+      <div class="top">
+        <div class="ic">🏦</div>
+        <div>
+          <div class="name">BPPR Check</div>
+          <span class="badge">Checking</span>
+        </div>
+        <div class="bal-block">
+          <div class="bal">$312.78</div>
+          <div class="open">opening $0.00</div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="primary">✎ Set balance</button>
+        <button>Edit</button>
+      </div>
+    </div>
+
+    <div class="acard">
+      <div class="top">
+        <div class="ic">💳</div>
+        <div>
+          <div class="name">Credit Card</div>
+          <span class="badge">Credit card</span>
+        </div>
+        <div class="bal-block">
+          <div class="bal neg">−$120.00</div>
+          <div class="open">opening $0.00</div>
+        </div>
+      </div>
+      <div class="btns">
+        <button class="primary">✎ Set balance</button>
+        <button>Edit</button>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

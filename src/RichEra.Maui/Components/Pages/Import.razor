@@ -1,0 +1,542 @@
+@page "/import"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@using Microsoft.Maui.Storage
+@inject IStatementImportService ImportSvc
+@inject IAccountService AccountSvc
+@inject NavigationManager Nav
+
+<PageTitle>Import</PageTitle>
+
+<div class="pg-head">
+    <h1 class="pg-title">Import</h1>
+    <div class="head-actions">
+        <ThemeToggle />
+    </div>
+</div>
+<p class="lede">Download an <b>.OFX</b> file from your bank, then import it here. We'll detect the account from the file — matching one you already have, or creating a new one.</p>
+
+<div class="actions">
+    <button class="primary" disabled="@_busy" @onclick="PickFileAsync"><Icon Name="folder" Size="16" /> Choose .OFX file</button>
+    @if (_fileName is not null)
+    {
+        <button disabled="@_busy" @onclick="Reset">Clear</button>
+    }
+</div>
+
+@if (_fileName is not null)
+{
+    <p class="file-name"><Icon Name="file" Size="14" /> @_fileName</p>
+}
+
+@if (_busy)
+{
+    <p class="hint">Working…</p>
+}
+
+@if (_error is not null)
+{
+    <p class="form-error">@_error</p>
+}
+
+@if (_inspection is not null && _result is null)
+{
+    <div class="stmt-banner">
+        <Icon Name="landmark" Size="16" />
+        <span>
+            <b>@_inspection.SuggestedType.ToString()</b>
+            @if (_inspection.MaskedAccountId is not null) { <text> @_inspection.MaskedAccountId</text> }
+            · @_inspection.TransactionCount transaction@(_inspection.TransactionCount == 1 ? "" : "s")
+            @if (StatementDateRange() is { } range) { <text> · @range</text> }
+        </span>
+    </div>
+
+    <div class="field">
+        <label>Destination</label>
+        <div class="seg">
+            <button class="@(_dest == Dest.Existing ? "active" : "")" disabled="@(_accounts.Count == 0)"
+                    @onclick="() => SetDest(Dest.Existing)">Existing account</button>
+            <button class="@(_dest == Dest.CreateNew ? "active" : "")"
+                    @onclick="() => SetDest(Dest.CreateNew)">Create new</button>
+        </div>
+
+        @if (_inspection.MatchedAccountId is not null && _dest == Dest.Existing && _selectedAccountId == _inspection.MatchedAccountId)
+        {
+            <p class="hint"><Icon Name="check-circle" Size="14" /> Matched to <b>@_inspection.MatchedAccountName</b> from a previous import.</p>
+        }
+        else if (_inspection.MatchedAccountId is not null && _dest == Dest.Existing && _selectedAccountId != _inspection.MatchedAccountId)
+        {
+            <p class="hint"><Icon Name="alert-triangle" Size="14" /> This file looks like <b>@_inspection.MatchedAccountName</b>, but you're importing into a different account.</p>
+        }
+        else if (_inspection.MatchedAccountId is not null && _dest == Dest.CreateNew)
+        {
+            <p class="hint"><Icon Name="alert-triangle" Size="14" /> This file matches <b>@_inspection.MatchedAccountName</b> — creating a new account won't link to it.</p>
+        }
+        else if (_accounts.Count == 0)
+        {
+            <p class="hint">No accounts yet — this will create your first one from the statement.</p>
+        }
+    </div>
+
+    @if (_dest == Dest.Existing)
+    {
+        <div class="field">
+            <label>Import into account</label>
+            <select class="form-select" @bind="_selectedAccountId" @bind:after="OnInputsChanged">
+                @foreach (var a in _accounts)
+                {
+                    <option value="@a.Id">@a.Name</option>
+                }
+            </select>
+        </div>
+
+        <div class="field">
+            <label>Mode</label>
+            <div class="seg">
+                <button class="@(_mode == StatementImportMode.Merge ? "active" : "")"
+                        @onclick="() => SetMode(StatementImportMode.Merge)">Merge</button>
+                <button class="@(_mode == StatementImportMode.Replace ? "active danger" : "")"
+                        @onclick="() => SetMode(StatementImportMode.Replace)">Replace</button>
+            </div>
+            <p class="hint">
+                @(_mode == StatementImportMode.Merge
+                    ? "Adds new transactions, skips duplicates, matches ones you already entered, and marks recurring payments as paid. Re-importing the same file is safe."
+                    : "Deletes ALL transactions in this account, then imports the file fresh.")
+            </p>
+        </div>
+    }
+    else
+    {
+        <div class="field">
+            <label>New account name</label>
+            <input class="form-control" @bind="_newName" @bind:after="OnInputsChanged" maxlength="120" />
+        </div>
+
+        <div class="field">
+            <label>Type</label>
+            <select class="form-select" @bind="_newType">
+                @foreach (var t in Enum.GetValues<AccountType>())
+                {
+                    <option value="@t">@TypeLabel(t)</option>
+                }
+            </select>
+        </div>
+
+        <p class="hint">
+            Starting balance: <b>@((_inspection.LedgerBalance ?? 0m).ToString("C"))</b>
+            @(_inspection.LedgerBalance is null ? " (no balance in file — you can set it later)" : " (from the statement's ledger balance)")
+        </p>
+    }
+
+    @if (_preview is not null)
+    {
+        <div class="summary">
+            <div class="chip"><div class="k">@(_mode == StatementImportMode.Replace && _dest == Dest.Existing ? "To import" : "New")</div><div class="v inc">@_preview.NewCount</div></div>
+            @if (_preview.MatchedExistingCount > 0)
+            {
+                <div class="chip"><div class="k">Matched</div><div class="v">@_preview.MatchedExistingCount</div></div>
+            }
+            @if (_preview.RecurringPaidCount > 0)
+            {
+                <div class="chip"><div class="k">Recurring</div><div class="v">@_preview.RecurringPaidCount</div></div>
+            }
+            <div class="chip"><div class="k">@(_mode == StatementImportMode.Replace && _dest == Dest.Existing ? "Skipped" : "Duplicates")</div><div class="v">@_preview.DuplicateCount</div></div>
+            <div class="chip"><div class="k">Net</div><div class="v @(_preview.NetImported >= 0 ? "inc" : "exp")">@SignedMoney(_preview.NetImported)</div></div>
+        </div>
+
+        @if (_dest == Dest.Existing && _preview.CurrentBalance is decimal current && _preview.ProjectedBalance is decimal projected)
+        {
+            <label class="balance-toggle">
+                <input type="checkbox" @bind="_updateBalance" />
+                <span>
+                    Update account balance:
+                    <b>@current.ToString("C")</b>@(_preview.NetImported == 0 ? " (no change)" : $" {SignedMoney(_preview.NetImported)} → ")@if (_preview.NetImported != 0)
+                    {<b>@projected.ToString("C")</b>}
+                </span>
+            </label>
+        }
+
+        @if (_dest == Dest.Existing && _mode == StatementImportMode.Replace && _preview.ExistingDeleteCount > 0)
+        {
+            <div class="danger-box">
+                <div class="danger-head"><Icon Name="alert-triangle" Size="16" /> This will delete existing data</div>
+                <p>
+                    Replacing will permanently delete <b>@_preview.ExistingDeleteCount transaction@(_preview.ExistingDeleteCount == 1 ? "" : "s")</b>
+                    in <b>@_preview.AccountName</b> and import <b>@_preview.NewCount</b> from this file.
+                </p>
+                <label class="confirm">
+                    <input type="checkbox" @bind="_confirmReplace" />
+                    Yes, delete @_preview.ExistingDeleteCount existing transaction@(_preview.ExistingDeleteCount == 1 ? "" : "s") and replace them.
+                </label>
+            </div>
+        }
+
+        @if (_preview.NewCount + _preview.MatchedExistingCount == 0)
+        {
+            <p class="empty">
+                @(_dest == Dest.CreateNew
+                    ? "Nothing to import — this file has no transactions."
+                    : $"Nothing to import — every row in this file is already in {_preview.AccountName}.")
+            </p>
+        }
+        else
+        {
+            <div class="actions">
+                <button class="primary @(_dest == Dest.Existing && _mode == StatementImportMode.Replace ? "danger" : "")"
+                        disabled="@(_busy || !CanCommit)" @onclick="CommitAsync">
+                    @CommitLabel
+                </button>
+            </div>
+        }
+
+        <div class="list">
+            @foreach (var r in _preview.Rows.OrderByDescending(r => r.Date))
+            {
+                <div class="row @(r.Kind == ImportRowKind.Duplicate ? "dup" : "")">
+                    <div class="mid">
+                        <div class="name">@(string.IsNullOrWhiteSpace(r.Description) ? "(no description)" : r.Description)</div>
+                        <div class="sub">
+                            <span class="date-tag">@r.Date.ToString("MMM d, yyyy")</span>
+                            @if (r.Kind == ImportRowKind.Duplicate)
+                            {
+                                <span class="dup-tag">skipped</span>
+                            }
+                            else if (r.Kind == ImportRowKind.MatchesExisting)
+                            {
+                                <span class="dup-tag">matches “@ShortLabel(r.MatchLabel)”</span>
+                            }
+                            else if (r.Kind == ImportRowKind.PaysRecurring)
+                            {
+                                <span class="dup-tag">pays “@ShortLabel(r.MatchLabel)”</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="amt @(r.Direction == TransactionDirection.Income ? "inc" : "exp")">@SignedAmount(r)</div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@if (_result is not null)
+{
+    <div class="result">
+        <div class="result-head"><Icon Name="check-circle" Size="18" /> Import complete</div>
+        <div class="result-body">
+            @if (_createdAccountName is not null)
+            {
+                <div><b>New account created:</b> @_createdAccountName</div>
+            }
+            @if (_result.DeletedCount > 0)
+            {
+                <div class="muted">@_result.DeletedCount existing transaction@(_result.DeletedCount == 1 ? "" : "s") deleted</div>
+            }
+            <div><b>@_result.ImportedCount</b> transaction@(_result.ImportedCount == 1 ? "" : "s") imported</div>
+            @if (_result.MatchedExistingCount > 0)
+            {
+                <div><b>@_result.MatchedExistingCount</b> matched to transaction@(_result.MatchedExistingCount == 1 ? " you" : "s you") already entered</div>
+            }
+            @if (_result.RecurringPaidCount > 0)
+            {
+                <div><b>@_result.RecurringPaidCount</b> recurring payment@(_result.RecurringPaidCount == 1 ? "" : "s") marked paid</div>
+            }
+            @if (ImportedDateRange() is { } range)
+            {
+                <div class="muted">Dated @range — open that month to see them.</div>
+            }
+            @if (_result.SkippedCount > 0)
+            {
+                <div class="muted">@_result.SkippedCount already imported — skipped</div>
+            }
+            @if (_result.BalanceDelta != 0 && _result.NewBalance is decimal nb)
+            {
+                <div>Balance updated @SignedMoney(_result.BalanceDelta) → <b>@nb.ToString("C")</b></div>
+            }
+            else
+            {
+                <div class="muted">Account balance left unchanged.</div>
+            }
+        </div>
+        @if (_result.ImportedCount > 0 && _result.LastDate is not null)
+        {
+            <div class="actions result-actions">
+                <button class="primary" @onclick="ViewImported">View in Transactions →</button>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    private enum Dest { Existing, CreateNew }
+
+    private IReadOnlyList<AccountDto> _accounts = Array.Empty<AccountDto>();
+    private StatementInspectionDto? _inspection;
+    private Dest _dest = Dest.CreateNew;
+    private Guid _selectedAccountId;
+    private string _newName = "";
+    private AccountType _newType = AccountType.Checking;
+    private StatementImportMode _mode = StatementImportMode.Merge;
+    private string? _fileName;
+    private byte[]? _fileBytes;
+    private ImportPreviewDto? _preview;
+    private ImportResultDto? _result;
+    private string? _createdAccountName;
+    private bool _busy;
+    private bool _confirmReplace;
+    private bool _updateBalance = true;
+    private string? _error;
+
+    private int ActionableCount => (_preview?.NewCount ?? 0) + (_preview?.MatchedExistingCount ?? 0);
+
+    private bool CanCommit => _dest switch
+    {
+        Dest.CreateNew => _preview is { NewCount: > 0 } && !string.IsNullOrWhiteSpace(_newName),
+        _ => ActionableCount > 0 &&
+             (_mode != StatementImportMode.Replace || _preview!.ExistingDeleteCount == 0 || _confirmReplace),
+    };
+
+    private string CommitLabel => _dest switch
+    {
+        Dest.CreateNew => $"Create account & import {_preview?.NewCount}",
+        _ when _mode == StatementImportMode.Replace => $"Replace data in {_preview?.AccountName}",
+        _ when _preview?.NewCount == 0 => $"Match {_preview?.MatchedExistingCount} existing transaction{(_preview?.MatchedExistingCount == 1 ? "" : "s")}",
+        _ => $"Import {_preview?.NewCount} new transaction{(_preview?.NewCount == 1 ? "" : "s")}",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _accounts = await AccountSvc.ListAsync();
+        if (_accounts.Count > 0) _selectedAccountId = _accounts[0].Id;
+    }
+
+    private async Task PickFileAsync()
+    {
+        _error = null;
+        try
+        {
+            var ofxType = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                // Banks report .OFX with inconsistent MIME types, so allow any file on Android.
+                [DevicePlatform.Android] = new[] { "*/*" },
+                [DevicePlatform.WinUI] = new[] { ".ofx", ".qfx" },
+                [DevicePlatform.iOS] = new[] { "public.data" },
+                [DevicePlatform.macOS] = new[] { "ofx", "qfx" },
+            });
+
+            var result = await FilePicker.Default.PickAsync(new PickOptions
+            {
+                PickerTitle = "Pick an OFX statement",
+                FileTypes = ofxType,
+            });
+            if (result is null) return; // user cancelled
+
+            using var stream = await result.OpenReadAsync();
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+
+            _fileName = result.FileName;
+            _fileBytes = ms.ToArray();
+            _result = null;
+            _createdAccountName = null;
+            await InspectAndPreviewAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Couldn't read that file: {ex.Message}";
+            ClearFile();
+        }
+    }
+
+    private async Task InspectAndPreviewAsync()
+    {
+        if (_fileBytes is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            using (var ms = new MemoryStream(_fileBytes, writable: false))
+                _inspection = await ImportSvc.InspectAsync(ms);
+
+            if (_inspection.TransactionCount == 0)
+            {
+                _error = "No transactions found in this file. Is it a valid OFX export?";
+                _preview = null;
+                return;
+            }
+
+            // Default the destination: a matched account → use it; otherwise create new
+            // (or, if accounts exist but none match, still default to create — the user can switch).
+            if (_inspection.MatchedAccountId is Guid matched)
+            {
+                _dest = Dest.Existing;
+                _selectedAccountId = matched;
+            }
+            else
+            {
+                _dest = Dest.CreateNew;
+            }
+            _newName = _inspection.SuggestedAccountName;
+            _newType = _inspection.SuggestedType;
+            _confirmReplace = false;
+            _updateBalance = true;
+
+            await RunPreviewAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = $"Couldn't read that file: {ex.Message}";
+            _inspection = null;
+            _preview = null;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SetDest(Dest dest)
+    {
+        if (_dest == dest) return;
+        _dest = dest;
+        await OnInputsChanged();
+    }
+
+    private async Task SetMode(StatementImportMode mode)
+    {
+        if (_mode == mode) return;
+        _mode = mode;
+        await OnInputsChanged();
+    }
+
+    private async Task OnInputsChanged()
+    {
+        // Dedupe / delete-count / projected net all depend on the chosen destination + mode.
+        _result = null;
+        _confirmReplace = false;
+        if (_fileBytes is not null) await RunPreviewAsync();
+    }
+
+    private async Task RunPreviewAsync()
+    {
+        if (_fileBytes is null) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            Guid? target = _dest == Dest.Existing ? _selectedAccountId : null;
+            var mode = _dest == Dest.Existing ? _mode : StatementImportMode.Merge;
+            using var ms = new MemoryStream(_fileBytes, writable: false);
+            _preview = await ImportSvc.PreviewAsync(target, ms, mode);
+        }
+        catch (Exception ex)
+        {
+            _error = $"Couldn't read that file: {ex.Message}";
+            _preview = null;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CommitAsync()
+    {
+        if (_fileBytes is null || !CanCommit) return;
+        _busy = true;
+        _error = null;
+        try
+        {
+            using var ms = new MemoryStream(_fileBytes, writable: false);
+            if (_dest == Dest.CreateNew)
+            {
+                var dto = new NewAccountFromStatementDto(
+                    _newName.Trim(), _newType,
+                    _inspection!.StatementAccountId, _inspection.BankId,
+                    _inspection.LedgerBalance ?? 0m);
+                _result = await ImportSvc.CreateAndImportAsync(dto, ms);
+                _createdAccountName = _newName.Trim();
+                // The new account now exists — refresh the list so a later same-page import lists it.
+                _accounts = await AccountSvc.ListAsync();
+                if (_result.AccountId is Guid newId) _selectedAccountId = newId;
+            }
+            else
+            {
+                _result = await ImportSvc.CommitAsync(_selectedAccountId, ms, _mode, _updateBalance);
+            }
+            _preview = null;
+            _inspection = null;
+            _fileName = null;
+            _fileBytes = null;
+            _confirmReplace = false;
+        }
+        catch (Exception ex)
+        {
+            _error = $"Import failed: {ex.Message}";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void Reset()
+    {
+        ClearFile();
+        _result = null;
+        _createdAccountName = null;
+        _error = null;
+    }
+
+    private void ClearFile()
+    {
+        _fileName = null;
+        _fileBytes = null;
+        _inspection = null;
+        _preview = null;
+        _confirmReplace = false;
+    }
+
+    // Jump to the month the rows actually landed in (statements are dated to a past period,
+    // so they rarely show up in the current month the Transactions page opens on).
+    private void ViewImported()
+    {
+        if (_result?.LastDate is not DateOnly d) return;
+        Nav.NavigateTo($"/transactions?year={d.Year}&month={d.Month}");
+    }
+
+    private string? StatementDateRange() => FormatRange(_inspection?.FirstDate, _inspection?.LastDate);
+    private string? ImportedDateRange() => FormatRange(_result?.FirstDate, _result?.LastDate);
+
+    // Human-readable span, e.g. "May 16 – Jun 15, 2026". Null when either bound is missing.
+    private static string? FormatRange(DateOnly? from, DateOnly? to)
+    {
+        if (from is not DateOnly f || to is not DateOnly l) return null;
+        if (f == l) return f.ToString("MMM d, yyyy");
+        if (f.Year == l.Year && f.Month == l.Month) return $"{f.ToString("MMM d")} – {l.Day}, {l.Year}";
+        if (f.Year == l.Year) return $"{f.ToString("MMM d")} – {l.ToString("MMM d")}, {l.Year}";
+        return $"{f.ToString("MMM d, yyyy")} – {l.ToString("MMM d, yyyy")}";
+    }
+
+    private static string TypeLabel(AccountType t) => t switch
+    {
+        AccountType.CreditCard => "Credit card",
+        _ => t.ToString(),
+    };
+
+    private static string SignedAmount(ImportPreviewRow r)
+    {
+        var prefix = r.Direction == TransactionDirection.Income ? "+" : "−";
+        return prefix + r.Amount.ToString("C");
+    }
+
+    // Match labels come from user notes / rule names; keep the badge readable.
+    private static string ShortLabel(string? label)
+    {
+        if (string.IsNullOrWhiteSpace(label)) return "existing";
+        var t = label.Trim();
+        return t.Length <= 30 ? t : t[..30] + "…";
+    }
+
+    private static string SignedMoney(decimal v) => (v >= 0 ? "+" : "−") + Math.Abs(v).ToString("C");
+}

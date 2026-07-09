@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Teller coverage check — Banco Popular PR</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; max-width: 640px;
+           margin: 40px auto; padding: 0 20px; line-height: 1.5; color: #1c2630; }
+    h1 { font-size: 20px; }
+    code { background: #f0f2f4; padding: 1px 5px; border-radius: 4px; }
+    .step { margin: 14px 0; }
+    input { width: 100%; padding: 10px; font-size: 15px; box-sizing: border-box;
+            border: 1px solid #ccc; border-radius: 8px; }
+    button { margin-top: 14px; padding: 12px 18px; font-size: 15px; font-weight: 600;
+             background: #2ecc71; color: #06210f; border: none; border-radius: 8px; cursor: pointer; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    #log { margin-top: 18px; background: #161c24; color: #d6e0ea; padding: 14px;
+           border-radius: 8px; font-family: ui-monospace, Consolas, monospace; font-size: 13px;
+           white-space: pre-wrap; min-height: 60px; }
+    .note { font-size: 13px; color: #5b6770; }
+  </style>
+</head>
+<body>
+  <h1>Teller coverage check — can it reach Banco Popular Puerto Rico?</h1>
+
+  <p class="note">
+    This is a throwaway test. It launches Teller Connect's institution picker so you can search
+    for your bank. It does <strong>not</strong> connect anything or store credentials — we're only
+    checking whether Banco Popular PR appears in the list.
+  </p>
+
+  <div class="step">
+    <strong>1.</strong> Sign up free at <code>teller.io</code> → open the Dashboard →
+    copy your <strong>Application ID</strong> (looks like <code>app_xxxxxxxx</code>).
+  </div>
+
+  <div class="step">
+    <strong>2.</strong> Paste it here:
+    <input id="appId" placeholder="app_xxxxxxxx" autocomplete="off" />
+  </div>
+
+  <div class="step">
+    <strong>3.</strong> Click the button. In the picker that opens, search
+    <strong>"Banco Popular"</strong>. Note whether it shows up (and which variant —
+    "Banco Popular Puerto Rico" vs the mainland "Popular Bank").
+    <br />
+    <button id="open" disabled>Launch Teller Connect</button>
+  </div>
+
+  <div id="log">Waiting for an Application ID…</div>
+
+  <p class="note">
+    Environment is set to <code>development</code> so the picker shows <strong>real</strong> banks
+    (sandbox would only show fake test banks). You can close the popup as soon as you've searched —
+    do not enter real bank credentials for this test.
+  </p>
+
+  <script src="https://cdn.teller.io/connect/connect.js"></script>
+  <script>
+    var log = document.getElementById("log");
+    var btn = document.getElementById("open");
+    var appIdInput = document.getElementById("appId");
+    function write(msg) { log.textContent = msg; }
+
+    appIdInput.addEventListener("input", function () {
+      btn.disabled = appIdInput.value.trim().indexOf("app_") !== 0;
+      if (!btn.disabled) write("Ready. Click Launch and search \"Banco Popular\".");
+    });
+
+    btn.addEventListener("click", function () {
+      var appId = appIdInput.value.trim();
+      write("Opening Teller Connect…");
+      try {
+        var tellerConnect = TellerConnect.setup({
+          applicationId: appId,
+          environment: "development",
+          products: ["transactions", "balance"],
+          onInit: function () { write("Teller Connect loaded. Search \"Banco Popular\" in the picker."); },
+          onSuccess: function (enrollment) {
+            write("Enrolled (you do NOT need to do this for the coverage test). "
+                  + "If you got this far, the bank is supported.");
+          },
+          onExit: function () { write("Closed. If Banco Popular PR appeared in the search, Teller supports it."); }
+        });
+        tellerConnect.open();
+      } catch (e) {
+        write("Error launching Teller Connect: " + e.message
+              + "\nDouble-check the Application ID, and that you're online.");
+      }
+    });
+  </script>
+</body>
+</html>

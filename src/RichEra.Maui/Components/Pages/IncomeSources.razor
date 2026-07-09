@@ -1,0 +1,134 @@
+@page "/income"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject IItemService ItemSvc
+@inject NavigationManager Nav
+
+<PageTitle>Paychecks</PageTitle>
+
+<div class="pg-head">
+    <h1 class="pg-title">Paychecks</h1>
+    <div class="head-actions">
+        <ThemeToggle />
+    </div>
+</div>
+
+<div class="add-row">
+    <button class="add-btn income" @onclick="@(() => Nav.NavigateTo("/income/new?dir=income"))">
+        <Icon Name="briefcase" Size="17" /> Income
+    </button>
+    <button class="add-btn expense" @onclick="@(() => Nav.NavigateTo("/income/new?dir=expense"))">
+        <Icon Name="receipt" Size="17" /> Expense
+    </button>
+</div>
+
+@if (_sources.Count > 0)
+{
+    <div class="search">
+        <span class="search-ic"><Icon Name="search" Size="16" /></span>
+        <input class="search-input" type="text" placeholder="Search recurring…" @bind="_search" @bind:event="oninput" />
+        @if (IsSearching)
+        {
+            <button class="search-clear" @onclick="@(() => _search = string.Empty)" aria-label="Clear search"><Icon Name="x" Size="16" /></button>
+        }
+    </div>
+
+    <div class="seg">
+        <button class="@(_filter == Filter.All ? "active" : "")" @onclick="() => _filter = Filter.All">All</button>
+        <button class="@(_filter == Filter.Income ? "active" : "")" @onclick="() => _filter = Filter.Income">Income</button>
+        <button class="@(_filter == Filter.Expense ? "active" : "")" @onclick="() => _filter = Filter.Expense">Expense</button>
+    </div>
+}
+
+@if (_sources.Count == 0)
+{
+    <div class="empty-card">
+        <div class="tile tile--green"><Icon Name="repeat" /></div>
+        <div class="empty-title">No recurring rules yet</div>
+        <div class="empty-sub">Add a paycheck or a recurring bill to project your cash flow weeks ahead.</div>
+    </div>
+}
+else if (Shown.Count == 0)
+{
+    <div class="empty-card">
+        <div class="tile @(_filter == Filter.Expense ? "tile--rose" : "tile--green")"><Icon Name="repeat" /></div>
+        <div class="empty-title">@(IsSearching ? "No matches" : $"No recurring {FilterNoun} yet")</div>
+        <div class="empty-sub">
+            @(IsSearching
+                ? $"Nothing matches “{_search.Trim()}”. Try a different term or clear the search."
+                : "Add one with the buttons above, or switch the filter back to All.")
+        </div>
+    </div>
+}
+else
+{
+    <div class="rules">
+        @foreach (var s in Shown)
+        {
+            var expense = s.Direction == TransactionDirection.Expense;
+            <a class="rule-card" href="@($"/income/{s.Id}/ledger")">
+                <div class="tile @(expense ? "tile--rose" : "tile--green")">
+                    <Icon Name="@(expense ? "receipt" : "briefcase")" />
+                </div>
+                <div class="rule-body">
+                    <div class="rule-name">@s.Name</div>
+                    <div class="rule-sub">@DescribeRule(s) · @(expense ? "from" : "into") @s.AccountName</div>
+                </div>
+                <div class="rule-right">
+                    <div class="rule-amt @(expense ? "exp" : "inc")">@(expense ? "−" : "+")@s.Amount.ToString("C")</div>
+                    <div class="rule-cadence">@(expense ? "per charge" : "per paycheck")</div>
+                </div>
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private enum Filter { All, Income, Expense }
+
+    private IReadOnlyList<ItemDto> _sources = Array.Empty<ItemDto>();
+    private Filter _filter = Filter.All;
+    private string _search = "";
+    private bool IsSearching => !string.IsNullOrWhiteSpace(_search);
+
+    // Rules matching the current direction filter AND the search box (name / account, tokenized).
+    // Small list, so filtering in-memory keeps both instant.
+    private List<ItemDto> Shown
+    {
+        get
+        {
+            IEnumerable<ItemDto> q = _filter switch
+            {
+                Filter.Income => _sources.Where(s => s.Direction == TransactionDirection.Income),
+                Filter.Expense => _sources.Where(s => s.Direction == TransactionDirection.Expense),
+                _ => _sources,
+            };
+            if (IsSearching)
+            {
+                var tokens = _search.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                                    .Select(tk => tk.ToLowerInvariant()).ToArray();
+                q = q.Where(s => tokens.All(tk =>
+                    (s.Name ?? "").ToLowerInvariant().Contains(tk) ||
+                    (s.AccountName ?? "").ToLowerInvariant().Contains(tk)));
+            }
+            return q.ToList();
+        }
+    }
+
+    private string FilterNoun => _filter == Filter.Income ? "income" : "expenses";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // This hub is about recurrence — ad-hoc library items don't belong here.
+        _sources = await ItemSvc.ListAsync(scheduledOnly: true);
+    }
+
+    private static string DescribeRule(ItemDto s) => (s.Frequency, s.StartDate) switch
+    {
+        (RepeatFrequency.Weekly, DateOnly d) => $"Weekly on {d.DayOfWeek}",
+        (RepeatFrequency.Biweekly, DateOnly d) => $"Biweekly on {d.DayOfWeek}",
+        (RepeatFrequency.Monthly, DateOnly d) => $"Monthly on day {d.Day}",
+        _ => "Recurring"
+    };
+}

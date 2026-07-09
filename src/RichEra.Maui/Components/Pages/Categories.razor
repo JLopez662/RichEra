@@ -1,0 +1,106 @@
+@page "/categories"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject ICategoryService CategorySvc
+
+<PageTitle>Categories</PageTitle>
+
+<div class="pg-head">
+    <h1 class="pg-title">Categories</h1>
+    <div class="head-actions">
+        <button class="app-icon-btn" title="Add category" @onclick="StartNew"><Icon Name="plus" Size="18" /></button>
+        <ThemeToggle />
+    </div>
+</div>
+
+@if (_editing is not null)
+{
+    <div class="cat-form">
+        <div class="cat-form-title">@(_editing.Id is null ? "New category" : "Edit category")</div>
+        <div class="cat-fgrid">
+            <div class="field span2">
+                <label>Name</label>
+                <input class="form-control" @bind="_editing.Name" placeholder="e.g. Groceries" />
+            </div>
+            <div class="field">
+                <label>Kind</label>
+                <select class="form-select" @bind="_editing.Kind">
+                    @foreach (var k in Enum.GetValues<CategoryKind>())
+                    {
+                        <option value="@k">@k</option>
+                    }
+                </select>
+            </div>
+            <div class="field">
+                <label>Color</label>
+                <input type="color" class="form-control form-control-color" @bind="_editing.ColorHex" />
+            </div>
+        </div>
+        <div class="cat-form-actions">
+            <button class="cancel" @onclick="() => _editing = null">Cancel</button>
+            <button class="save" @onclick="Save">Save</button>
+        </div>
+    </div>
+}
+
+@if (_categories.Count == 0)
+{
+    <p class="empty">No categories yet — tap ＋ to add one.</p>
+}
+else
+{
+    @foreach (var kind in new[] { CategoryKind.Income, CategoryKind.Expense })
+    {
+        var inKind = _categories.Where(c => c.Kind == kind).ToList();
+        if (inKind.Count == 0) { continue; }
+        <div class="eyebrow"><span>@kind</span></div>
+        <div class="cat-list">
+            @foreach (var c in inKind)
+            {
+                <div class="cat-row">
+                    <span class="cat-swatch" style="background:@(c.ColorHex ?? "#7F8C8D")"></span>
+                    <div class="cat-name">@c.Name</div>
+                    <button class="cat-edit" title="Edit" @onclick="() => StartEdit(c)"><Icon Name="pencil" Size="16" /></button>
+                </div>
+            }
+        </div>
+    }
+}
+
+@code {
+    private IReadOnlyList<CategoryDto> _categories = Array.Empty<CategoryDto>();
+    private EditModel? _editing;
+
+    protected override async Task OnInitializedAsync() => await Reload();
+
+    private async Task Reload() => _categories = await CategorySvc.ListAsync();
+
+    private void StartNew() => _editing = new EditModel { ColorHex = "#7F8C8D" };
+
+    private void StartEdit(CategoryDto c) => _editing = new EditModel
+    {
+        Id = c.Id,
+        Name = c.Name,
+        Kind = c.Kind,
+        ColorHex = c.ColorHex ?? "#7F8C8D",
+        Icon = c.Icon,
+    };
+
+    private async Task Save()
+    {
+        if (_editing is null) return;
+        await CategorySvc.UpsertAsync(new CategoryUpsertDto(_editing.Id, _editing.Name, _editing.Kind, _editing.Icon, _editing.ColorHex));
+        _editing = null;
+        await Reload();
+    }
+
+    private class EditModel
+    {
+        public Guid? Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public CategoryKind Kind { get; set; } = CategoryKind.Expense;
+        public string? Icon { get; set; }
+        public string? ColorHex { get; set; }
+    }
+}

@@ -1,0 +1,197 @@
+@* Floating "island" bottom tab bar — replaces the hamburger sidebar. Four
+   tabs flank a central FAB ("+") that opens a quick-add / navigate sheet.
+
+   Tabs (left → right):  Home /  ·  Activity /transactions  ·  [+]  ·
+                         Paychecks /income  ·  Accounts /accounts
+
+   Active highlight is computed from the current URI on every LocationChanged.
+   Rendered once in MainLayout, so toggling the sheet stays local. *@
+
+@implements IDisposable
+@inject NavigationManager Nav
+
+<nav class="bottom-tabs" role="navigation" aria-label="Primary">
+    <div class="bottom-tabs__group">
+        <button class="bottom-tab @(IsHome ? "is-active" : "")" type="button" @onclick="GoHome">
+            <span class="bottom-tab__ico"><Icon Name="home" /></span>
+            <span class="bottom-tab__lbl">Home</span>
+        </button>
+        <button class="bottom-tab @(IsActivity ? "is-active" : "")" type="button" @onclick="GoActivity">
+            <span class="bottom-tab__ico"><Icon Name="list" /></span>
+            <span class="bottom-tab__lbl">Activity</span>
+        </button>
+    </div>
+
+    <div class="bottom-tab__fab-slot">
+        <button class="bottom-tab__fab @(sheetOpen ? "is-open" : "")" type="button"
+                aria-label="Quick add" @onclick="ToggleSheet">
+            <span class="bottom-tab__fab-ico"><Icon Name="plus" StrokeWidth="2.4" /></span>
+        </button>
+    </div>
+
+    <div class="bottom-tabs__group">
+        <button class="bottom-tab @(IsPaychecks ? "is-active" : "")" type="button" @onclick="GoPaychecks">
+            <span class="bottom-tab__ico"><Icon Name="repeat" /></span>
+            <span class="bottom-tab__lbl">Paychecks</span>
+        </button>
+        <button class="bottom-tab @(IsAccounts ? "is-active" : "")" type="button" @onclick="GoAccounts">
+            <span class="bottom-tab__ico"><Icon Name="wallet" /></span>
+            <span class="bottom-tab__lbl">Accounts</span>
+        </button>
+    </div>
+</nav>
+
+@if (sheetOpen)
+{
+    <div class="bottom-sheet__backdrop" @onclick="CloseSheet"></div>
+    <div class="bottom-sheet" role="dialog" aria-modal="true" aria-label="Quick add">
+        <div class="bottom-sheet__handle"></div>
+        <div class="bottom-sheet__title">Quick add</div>
+        <div class="bottom-sheet__sub">Log money in or out, or jump somewhere.</div>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/transactions?add=expense")'>
+            <span class="tile tile--rose"><Icon Name="receipt" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Add expense</span>
+                <span class="bottom-sheet__row-sub">Record money going out</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/transactions?add=income")'>
+            <span class="tile tile--green"><Icon Name="banknote" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Add income</span>
+                <span class="bottom-sheet__row-sub">Record a one-off deposit</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/transactions?add=transfer")'>
+            <span class="tile tile--blue"><Icon Name="arrow-left-right" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">New transfer</span>
+                <span class="bottom-sheet__row-sub">Move money between accounts</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <div class="bottom-sheet__divider">Manage</div>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/shop")'>
+            <span class="tile tile--amber"><Icon Name="shopping-cart" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Pay shop</span>
+                <span class="bottom-sheet__row-sub">Pay bills like you're shopping</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/income")'>
+            <span class="tile tile--green"><Icon Name="repeat" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Recurring income</span>
+                <span class="bottom-sheet__row-sub">Paychecks &amp; projection</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/savings")'>
+            <span class="tile tile--green"><Icon Name="piggy-bank" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Savings goal</span>
+                <span class="bottom-sheet__row-sub">Set a target &amp; auto-save %</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/categories")'>
+            <span class="tile tile--violet"><Icon Name="more-horizontal" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Categories</span>
+                <span class="bottom-sheet__row-sub">Edit your category list</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/import")'>
+            <span class="tile tile--blue"><Icon Name="arrow-down" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Import statement</span>
+                <span class="bottom-sheet__row-sub">Bring in an OFX file</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/backup")'>
+            <span class="tile tile--slate"><Icon Name="folder" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Backup &amp; restore</span>
+                <span class="bottom-sheet__row-sub">Save or load your data</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__cancel" type="button" @onclick="CloseSheet">Cancel</button>
+    </div>
+}
+
+@code {
+    private bool sheetOpen;
+    private string currentPath = "/";
+
+    protected override void OnInitialized()
+    {
+        currentPath = NormalizedPath(Nav.Uri);
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        currentPath = NormalizedPath(e.Location);
+        if (sheetOpen) sheetOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+
+    /// <summary>Reduce the full URI to its path (no base href / query).</summary>
+    private string NormalizedPath(string uri)
+    {
+        if (string.IsNullOrEmpty(uri)) return "/";
+        var rel = Nav.ToBaseRelativePath(uri);
+        if (string.IsNullOrEmpty(rel)) return "/";
+        var qIdx = rel.IndexOf('?');
+        if (qIdx >= 0) rel = rel.Substring(0, qIdx);
+        return "/" + rel.TrimStart('/');
+    }
+
+    private bool IsHome => currentPath == "/";
+    private bool IsActivity => currentPath.StartsWith("/transactions", StringComparison.OrdinalIgnoreCase);
+    // "/income" is the recurring-paycheck hub (and its /income/{id}/… detail pages).
+    private bool IsPaychecks => currentPath.StartsWith("/income", StringComparison.OrdinalIgnoreCase);
+    private bool IsAccounts => currentPath.StartsWith("/accounts", StringComparison.OrdinalIgnoreCase);
+
+    // Optimistic-nav: move the highlight to the tapped tab before NavigateTo so
+    // the bar feels instant even if the destination takes a moment to render.
+    private void GoHome() => GoTo("/");
+    private void GoActivity() => GoTo("/transactions");
+    private void GoPaychecks() => GoTo("/income");
+    private void GoAccounts() => GoTo("/accounts");
+
+    private void GoTo(string path)
+    {
+        if (currentPath == path) return;
+        currentPath = path;
+        Nav.NavigateTo(path);
+    }
+
+    private void ToggleSheet() => sheetOpen = !sheetOpen;
+    private void CloseSheet() => sheetOpen = false;
+
+    private void NavigateAndClose(string route)
+    {
+        sheetOpen = false;
+        Nav.NavigateTo(route);
+    }
+}

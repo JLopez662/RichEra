@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mockup 02 — Paycheck ledger</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #1a2027;
+    --card-2: #232b35;
+    --text: #e8edf2;
+    --muted: #8b95a3;
+    --accent: #2ecc71;
+    --warn: #f39c12;
+    --border: #2a3340;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 16px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 0 20px;
+  }
+  .back { color: var(--muted); text-decoration: none; font-size: 14px; }
+  .source-header {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    margin-bottom: 20px;
+  }
+  .source-header h1 { margin: 0; font-size: 20px; display: flex; align-items: center; gap: 10px; }
+  .source-header .rule { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .edit-link { float: right; color: var(--accent); font-size: 13px; text-decoration: none; }
+  .summary-strip {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-bottom: 24px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+  }
+  .stat .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
+  .stat .value { font-size: 22px; font-weight: 600; color: var(--accent); margin-top: 4px; }
+  .month {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    margin-bottom: 14px;
+    overflow: hidden;
+  }
+  .month-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 18px;
+    background: var(--card-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .month-head .title { font-size: 15px; font-weight: 600; }
+  .month-head .total { color: var(--accent); font-weight: 600; }
+  .month-head .total.proj { color: var(--muted); }
+  .row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+  }
+  .row:last-child { border-bottom: none; }
+  .row .dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    display: inline-block; margin-right: 12px;
+    flex-shrink: 0;
+  }
+  .dot.received { background: var(--accent); }
+  .dot.projected { background: transparent; border: 2px solid var(--muted); }
+  .left { display: flex; align-items: center; }
+  .left .date { font-size: 15px; }
+  .left .day { color: var(--muted); font-size: 12px; margin-right: 6px; }
+  .left .status { color: var(--muted); font-size: 12px; margin-top: 2px; display: block; }
+  .right { text-align: right; }
+  .right .amount { font-weight: 600; color: var(--accent); }
+  .right.proj .amount { color: var(--muted); }
+  .right .edit { color: var(--muted); font-size: 12px; }
+  .three-pay-badge {
+    background: rgba(243,156,18,0.15);
+    color: var(--warn);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 6px;
+    margin-left: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+</style>
+</head>
+<body>
+  <div class="topbar">
+    <a class="back" href="index.html">‹ All mockups</a>
+    <span style="color:var(--muted);font-size:13px;">02 · Paycheck ledger</span>
+  </div>
+
+  <div class="source-header">
+    <a class="edit-link" href="#">Edit rule</a>
+    <h1>💼 Day Job</h1>
+    <div class="rule">Biweekly Friday · base $1,346.17 · into Checking</div>
+  </div>
+
+  <div class="summary-strip">
+    <div class="stat">
+      <div class="label">Received YTD</div>
+      <div class="value">$4,039.50</div>
+    </div>
+    <div class="stat">
+      <div class="label">Next paycheck</div>
+      <div class="value">May 29</div>
+    </div>
+  </div>
+
+  <div class="month">
+    <div class="month-head">
+      <span class="title">May 2026</span>
+      <span class="total">$2,693.33</span>
+    </div>
+    <div class="row">
+      <div class="left">
+        <span class="dot received"></span>
+        <div>
+          <div class="date"><span class="day">Fri</span>May 1</div>
+          <small class="status">Received · Salary</small>
+        </div>
+      </div>
+      <div class="right">
+        <div class="amount">+$1,347.17</div>
+        <a class="edit" href="#">Edit</a>
+      </div>
+    </div>
+    <div class="row">
+      <div class="left">
+        <span class="dot received"></span>
+        <div>
+          <div class="date"><span class="day">Fri</span>May 15</div>
+          <small class="status">Received · Salary</small>
+        </div>
+      </div>
+      <div class="right">
+        <div class="amount">+$1,346.16</div>
+        <a class="edit" href="#">Edit</a>
+      </div>
+    </div>
+    <div class="row">
+      <div class="left">
+        <span class="dot projected"></span>
+        <div>
+          <div class="date"><span class="day">Fri</span>May 29</div>
+          <small class="status">Projected</small>
+        </div>
+      </div>
+      <div class="right proj">
+        <div class="amount">+$1,346.17</div>
+        <a class="edit" href="#">Confirm</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="month">
+    <div class="month-head">
+      <span class="title">April 2026</span>
+      <span class="total">$1,346.17</span>
+    </div>
+    <div class="row">
+      <div class="left">
+        <span class="dot received"></span>
+        <div>
+          <div class="date"><span class="day">Fri</span>Apr 17</div>
+          <small class="status">Received · Salary</small>
+        </div>
+      </div>
+      <div class="right">
+        <div class="amount">+$1,346.17</div>
+        <a class="edit" href="#">Edit</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="month">
+    <div class="month-head">
+      <span class="title">June 2026 (projected)</span>
+      <span class="total proj">$2,692.34</span>
+    </div>
+    <div class="row">
+      <div class="left">
+        <span class="dot projected"></span>
+        <div>
+          <div class="date"><span class="day">Fri</span>Jun 12</div>
+          <small class="status">Projected</small>
+        </div>
+      </div>
+      <div class="right proj"><div class="amount">+$1,346.17</div></div>
+    </div>
+    <div class="row">
+      <div class="left">
+        <span class="dot projected"></span>
+        <div>
+          <div class="date"><span class="day">Fri</span>Jun 26</div>
+          <small class="status">Projected</small>
+        </div>
+      </div>
+      <div class="right proj"><div class="amount">+$1,346.17</div></div>
+    </div>
+  </div>
+
+  <div class="month">
+    <div class="month-head">
+      <span class="title">July 2026 (projected) <span class="three-pay-badge">3 paychecks</span></span>
+      <span class="total proj">$4,038.51</span>
+    </div>
+    <div class="row">
+      <div class="left">
+        <span class="dot projected"></span>
+        <div>
+          <div class="date"><span class="day">Fri</span>Jul 10</div>
+          <small class="status">Projected</small>
+        </div>
+      </div>
+      <div class="right proj"><div class="amount">+$1,346.17</div></div>
+    </div>
+    <div class="row">
+      <div class="left">
+        <span class="dot projected"></span>
+        <div>
+          <div class="date"><span class="day">Fri</span>Jul 24</div>
+          <small class="status">Projected</small>
+        </div>
+      </div>
+      <div class="right proj"><div class="amount">+$1,346.17</div></div>
+    </div>
+  </div>
+</body>
+</html>

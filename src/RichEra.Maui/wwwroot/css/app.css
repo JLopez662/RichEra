@@ -1,0 +1,257 @@
+/* Rich Era — Bootstrap component theming.
+
+   All colour TOKENS (both Aurora light + Midnight dark) live in theme.css,
+   which loads last. This file styles Bootstrap components against those token
+   names (--card, --muted, --accent, --danger …) so they track the theme. */
+
+html, body {
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 { color: var(--text); }
+h1 { font-weight: 600; letter-spacing: -0.01em; }
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+
+small, .text-muted { color: var(--muted) !important; }
+.text-success { color: var(--accent) !important; }
+.text-danger { color: var(--danger) !important; }
+
+hr { border-color: var(--border); }
+
+/* CARDS */
+.card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text);
+}
+.card-header {
+    background: var(--card-2);
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-weight: 600;
+    padding: 14px 18px;
+}
+.card-body { padding: 18px; color: var(--text); }
+.card .text-muted { color: var(--muted) !important; }
+
+/* LIST GROUP */
+.list-group { border-radius: var(--radius); overflow: hidden; }
+.list-group-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 14px 18px;
+}
+.list-group-item + .list-group-item { border-top: 0; }
+.list-group-item:hover { background: var(--card-2); }
+.list-group-item-action { color: var(--text); }
+.list-group-item.bg-light { background: var(--card-2) !important; color: var(--muted); }
+
+/* FORMS */
+label, .form-label {
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 6px;
+}
+.form-control, .form-select, input[type="date"], input[type="number"], input[type="text"], input[type="month"], select {
+    background: var(--card-2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: 12px 14px !important;
+    font-size: 16px !important;
+    color-scheme: dark;
+}
+.form-control:focus, .form-select:focus {
+    outline: none !important;
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px var(--accent-soft) !important;
+}
+.form-control::placeholder { color: #5d6772; }
+.form-control-color {
+    padding: 4px !important;
+    height: 44px;
+    width: 100%;
+}
+
+/* BUTTONS */
+.btn {
+    border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 14px;
+    border: 1px solid transparent;
+    transition: filter 0.15s, background 0.15s, border-color 0.15s;
+}
+.btn-primary, .btn-success {
+    background: var(--accent);
+    color: #0a0f15;
+    border-color: var(--accent);
+}
+.btn-primary:hover, .btn-success:hover {
+    background: var(--accent-hover);
+    border-color: var(--accent-hover);
+    color: #0a0f15;
+}
+.btn-outline-primary, .btn-outline-secondary {
+    background: transparent;
+    color: var(--text);
+    border-color: var(--border);
+}
+.btn-outline-primary:hover, .btn-outline-secondary:hover {
+    background: var(--card-2);
+    color: var(--text);
+    border-color: var(--accent);
+}
+.btn-outline-danger {
+    background: transparent;
+    color: var(--danger);
+    border-color: rgba(231,76,60,0.4);
+}
+.btn-outline-danger:hover {
+    background: rgba(231,76,60,0.12);
+    color: var(--danger);
+    border-color: var(--danger);
+}
+.btn-link {
+    color: var(--accent);
+    text-decoration: none;
+    padding: 0;
+    font-weight: 600;
+}
+.btn-link:hover { color: var(--accent-hover); text-decoration: underline; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+
+/* NAV PILLS (tabs) */
+.nav-pills { gap: 6px; }
+.nav-pills .nav-link {
+    color: var(--text-dim);
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-weight: 600;
+    font-size: 14px;
+}
+.nav-pills .nav-link:hover { background: var(--card-2); color: var(--text); }
+.nav-pills .nav-link.active {
+    background: var(--accent);
+    color: #0a0f15;
+    border-color: var(--accent);
+}
+
+/* TABLES */
+.table {
+    color: var(--text);
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text);
+    --bs-table-striped-bg: var(--card-2);
+    --bs-table-striped-color: var(--text);
+    --bs-table-hover-bg: var(--card-2);
+    --bs-table-hover-color: var(--text);
+}
+.table thead th {
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border);
+}
+.table td, .table th { border-color: var(--border); padding: 12px 14px; }
+
+/* PROGRESS */
+.progress {
+    background: var(--card-2);
+    border-radius: 999px;
+    height: 10px;
+}
+.progress-bar { background: linear-gradient(90deg, var(--accent), var(--accent-hover)); }
+
+/* ALERTS */
+.alert {
+    border-radius: var(--radius);
+    border: 1px solid;
+    padding: 14px 18px;
+}
+.alert-info {
+    background: rgba(52,152,219,0.1);
+    border-color: rgba(52,152,219,0.3);
+    color: #c0d9ea;
+}
+.alert-secondary {
+    background: var(--card);
+    border-color: var(--border);
+    color: var(--muted);
+}
+
+/* BADGES */
+.badge.bg-warning {
+    background: rgba(243,156,18,0.15) !important;
+    color: var(--warn) !important;
+    font-weight: 600;
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 4px 8px;
+    border-radius: 5px;
+}
+
+/* MISC RESETS */
+h1:focus { outline: none; }
+
+.valid.modified:not([type=checkbox]) { outline: 1px solid var(--accent); }
+.invalid { outline: 1px solid var(--danger); }
+.validation-message { color: var(--danger); }
+
+#blazor-error-ui {
+    background: #2a1818;
+    color: #ffb3b3;
+    border-top: 1px solid var(--danger);
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.3);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+.blazor-error-boundary {
+    background: #2a1818;
+    color: #ffb3b3;
+    padding: 1rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--danger);
+}
+.blazor-error-boundary::after { content: "An error has occurred."; }
+
+.status-bar-safe-area { display: none; }
+@supports (-webkit-touch-callout: none) {
+    .status-bar-safe-area {
+        display: flex;
+        position: sticky;
+        top: 0;
+        height: env(safe-area-inset-top);
+        background: var(--bg-2);
+        width: 100%;
+        z-index: 1;
+    }
+    .flex-column, .navbar-brand { padding-left: env(safe-area-inset-left); }
+}

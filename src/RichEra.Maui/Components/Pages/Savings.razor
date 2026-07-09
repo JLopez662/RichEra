@@ -1,0 +1,276 @@
+@page "/savings"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject ISavingsService SavingsSvc
+@inject IAccountService AccountSvc
+@inject IItemService ItemSvc
+@inject NavigationManager Nav
+
+<PageTitle>Savings goal</PageTitle>
+
+<div class="pg-head">
+    <button class="back" @onclick='() => Nav.NavigateTo("/")' aria-label="Back"><Icon Name="chevron-left" /></button>
+    <h1 class="pg-title">Savings goal</h1>
+    <div class="head-actions">
+        <ThemeToggle />
+    </div>
+</div>
+
+@if (_plan is null)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else if (_form is not null)
+{
+    <div class="form-card">
+        <div class="field">
+            <label>Goal name</label>
+            <input class="form-control" @bind="_form.Name" placeholder="Emergency fund" maxlength="120" />
+        </div>
+        <div class="field">
+            <label>Target amount</label>
+            <input type="number" step="0.01" min="0" class="form-control" @bind="_form.Target" />
+            @if (_incomes.Count > 0)
+            {
+                <div class="from-income">
+                    <span class="fi-lbl">or from</span>
+                    <select class="form-select" @bind="_fromIncomeId">
+                        <option value="">(income)</option>
+                        @foreach (var i in _incomes)
+                        {
+                            <option value="@i.Id">@i.Name (@i.Amount.ToString("C"))</option>
+                        }
+                    </select>
+                    <input type="number" min="0" step="1" class="form-control fi-pct" @bind="_fromPercent" />
+                    <span class="fi-x">%</span>
+                    <button type="button" class="fi-apply" @onclick="ApplyFromIncome">Apply</button>
+                </div>
+                @if (_fromHint is not null)
+                {
+                    <p class="hint">@_fromHint</p>
+                }
+            }
+        </div>
+        <div class="field">
+            <label>Mode</label>
+            <div class="seg">
+                <button class="@(_form.Mode == SavingsMode.TrackOnly ? "active" : "")" @onclick="() => _form.Mode = SavingsMode.TrackOnly">Track only</button>
+                <button class="@(_form.Mode == SavingsMode.MoveToSavings ? "active" : "")" @onclick="() => _form.Mode = SavingsMode.MoveToSavings">Move to savings</button>
+            </div>
+            <p class="hint">
+                @(_form.Mode == SavingsMode.TrackOnly
+                    ? "Counts your saved % as a tally — your money stays in your accounts."
+                    : "Transfers the saved % into a savings account each time a paycheck is received.")
+            </p>
+        </div>
+        @if (_form.Mode == SavingsMode.MoveToSavings)
+        {
+            <div class="field">
+                <label>Savings account</label>
+                @if (_accounts.Count == 0)
+                {
+                    <p class="hint">Add an account first.</p>
+                }
+                else
+                {
+                    <select class="form-select" @bind="_form.LinkedAccountId">
+                        <option value="">(choose account)</option>
+                        @foreach (var a in _accounts)
+                        {
+                            <option value="@a.Id">@a.Name</option>
+                        }
+                    </select>
+                }
+            </div>
+        }
+        @if (_error is not null)
+        {
+            <p class="form-error">@_error</p>
+        }
+        <div class="actions">
+            <button class="cancel" @onclick="CancelForm">Cancel</button>
+            <button class="save" disabled="@_busy" @onclick="SaveGoal">Save goal</button>
+        </div>
+    </div>
+}
+else if (!_plan.HasGoal)
+{
+    <div class="empty-card">
+        <div class="tile tile--green"><Icon Name="piggy-bank" /></div>
+        <div class="empty-title">No savings goal yet</div>
+        <div class="empty-sub">Set a target, then choose what % of each paycheck to set aside. Progress fills in automatically as you get paid.</div>
+        <button class="primary" @onclick="StartNew">Set a savings goal</button>
+    </div>
+}
+else
+{
+    var g = _plan.Goal!;
+    <div class="goal-card">
+        <div class="goal-name"><Icon Name="piggy-bank" Size="18" /> @g.Name</div>
+        <div class="goal-hero">
+            <span class="n">@_plan.SavedSoFar.ToString("C")</span>
+            <span class="of">of @g.TargetAmount.ToString("C") · @(_plan.PercentComplete)%</span>
+        </div>
+        <div class="pbar"><div class="f" style="width:@(_plan.PercentComplete)%"></div></div>
+        <div class="pmeta">
+            <span>@_plan.SavedSoFar.ToString("C") saved</span>
+            <span>@_plan.Remaining.ToString("C") to go</span>
+        </div>
+
+        @if (_plan.ProjectedCompletion is DateOnly done)
+        {
+            <div class="proj">≈ @_plan.PerMonthContribution.ToString("C") / mo · on track for <b>@done.ToString("MMM yyyy")</b></div>
+        }
+        else if (_plan.PerMonthContribution <= 0m)
+        {
+            <div class="proj muted">Set a save % on an income below to start filling this.</div>
+        }
+        else
+        {
+            <div class="proj">Target reached.</div>
+        }
+
+        <div class="mode-chip @(g.Mode == SavingsMode.MoveToSavings ? "move" : "")">
+            @(g.Mode == SavingsMode.MoveToSavings
+                ? $"Moves to {g.LinkedAccountName ?? "savings"} each payday"
+                : "Tracked — money stays in your accounts")
+        </div>
+    </div>
+
+    <div class="section-label">Fed by</div>
+    @if (_plan.Contributors.Count == 0)
+    {
+        <p class="hint">No income is saving yet. Open an income on the Paychecks page and set its “Auto-save %”.</p>
+    }
+    else
+    {
+        <div class="feed">
+            @foreach (var c in _plan.Contributors)
+            {
+                <a class="feed-row" href="@($"/income/{c.ItemId}/edit")">
+                    <div class="tile tile--green"><Icon Name="briefcase" /></div>
+                    <div class="fm">
+                        <div class="fn">@c.Name</div>
+                        <div class="fp">@c.SavingsPercent% of each @c.Frequency.ToString().ToLowerInvariant() paycheck</div>
+                    </div>
+                    <div class="fa">@c.PerPaycheck.ToString("C")</div>
+                </a>
+            }
+        </div>
+    }
+
+    <div class="actions">
+        <button @onclick="StartEdit">Edit goal</button>
+        <button class="ghost-danger" @onclick="RemoveGoal">Remove</button>
+    </div>
+}
+
+@code {
+    private SavingsPlanDto? _plan;
+    private IReadOnlyList<AccountDto> _accounts = Array.Empty<AccountDto>();
+    private IReadOnlyList<ItemDto> _incomes = Array.Empty<ItemDto>();
+    private Guid? _fromIncomeId;
+    private decimal _fromPercent = 100m;
+    private string? _fromHint;
+    private GoalForm? _form;
+    private bool _busy;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _accounts = await AccountSvc.ListAsync();
+        _incomes = await ItemSvc.ListAsync(direction: TransactionDirection.Income);
+        await ReloadPlan();
+    }
+
+    private async Task ReloadPlan() => _plan = await SavingsSvc.GetPlanAsync();
+
+    private void StartNew()
+    {
+        _form = new GoalForm();
+        ResetFromIncome();
+    }
+
+    private void StartEdit()
+    {
+        var g = _plan!.Goal!;
+        _form = new GoalForm { Id = g.Id, Name = g.Name, Target = g.TargetAmount, Mode = g.Mode, LinkedAccountId = g.LinkedAccountId };
+        ResetFromIncome();
+    }
+
+    private void ResetFromIncome()
+    {
+        _fromIncomeId = null;
+        _fromPercent = 100m;
+        _fromHint = null;
+    }
+
+    // Fill the target from a chosen income — % of one paycheck. A snapshot; the value stays editable.
+    private void ApplyFromIncome()
+    {
+        if (_form is null) return;
+        if (_fromIncomeId is not Guid id)
+        {
+            _fromHint = "Pick an income first.";
+            return;
+        }
+        var inc = _incomes.FirstOrDefault(x => x.Id == id);
+        if (inc is null) return;
+        var pct = Math.Max(0m, _fromPercent);
+        _form.Target = Math.Round(inc.Amount * pct / 100m, 2);
+        _fromHint = $"{pct:0.#}% of {inc.Name} ({inc.Amount.ToString("C")}/paycheck) = {_form.Target.ToString("C")}";
+    }
+
+    private void CancelForm()
+    {
+        _form = null;
+        _error = null;
+    }
+
+    private async Task SaveGoal()
+    {
+        if (_form is null) return;
+        if (string.IsNullOrWhiteSpace(_form.Name)) { _error = "Give the goal a name."; return; }
+        if (_form.Target <= 0m) { _error = "Set a target greater than zero."; return; }
+        if (_form.Mode == SavingsMode.MoveToSavings && (_form.LinkedAccountId is null || _form.LinkedAccountId == Guid.Empty))
+        {
+            _error = "Pick a savings account for move mode.";
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            await SavingsSvc.UpsertGoalAsync(new SavingsGoalUpsertDto(
+                _form.Id, _form.Name.Trim(), _form.Target, _form.Mode,
+                _form.LinkedAccountId == Guid.Empty ? null : _form.LinkedAccountId));
+            _form = null;
+            await ReloadPlan();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RemoveGoal()
+    {
+        await SavingsSvc.ClearGoalAsync();
+        await ReloadPlan();
+    }
+
+    private class GoalForm
+    {
+        public Guid? Id { get; set; }
+        public string Name { get; set; } = "Emergency fund";
+        public decimal Target { get; set; }
+        public SavingsMode Mode { get; set; } = SavingsMode.TrackOnly;
+        public Guid? LinkedAccountId { get; set; }
+    }
+}

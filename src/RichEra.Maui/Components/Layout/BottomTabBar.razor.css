@@ -1,0 +1,135 @@
+/* ---------- Floating island tab bar ----------
+   Detached from the viewport edges, fully rounded, with a soft accent-tinted
+   shadow. Two equal-width tab groups flank a fixed-width center FAB, so the
+   FAB stays dead-centre no matter which tab's pill is expanded. */
+.bottom-tabs {
+    position: fixed;
+    left: 14px; right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+    max-width: 520px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    background: var(--nav-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    box-shadow: 0 14px 34px -10px var(--grad-shadow),
+                0 2px 8px rgba(15, 23, 42, 0.10),
+                0 1px 0 var(--inner-top) inset;
+    z-index: 50;
+}
+
+.bottom-tabs__group {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-evenly;
+}
+
+.bottom-tab {
+    position: relative;
+    background: transparent; border: 0; cursor: pointer;
+    color: var(--text-faint);
+    display: inline-flex; flex-direction: row; align-items: center; justify-content: center;
+    gap: 7px;
+    padding: 9px 11px;
+    border-radius: 999px;
+    flex: 0 0 auto;
+    -webkit-tap-highlight-color: transparent;
+    transition: color 160ms ease, background-color 160ms ease, transform 90ms ease;
+}
+.bottom-tab:active { transform: scale(0.92); }
+.bottom-tab__ico { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.bottom-tab__ico ::deep .n2f-ico { width: 22px; height: 22px; }
+.bottom-tab__lbl {
+    font-size: 12px; font-weight: 800; letter-spacing: 0.01em; line-height: 1;
+    white-space: nowrap;
+    display: none; /* inactive = icon only */
+}
+
+.bottom-tab.is-active { color: var(--accent-ink); background: var(--accent-soft); }
+.bottom-tab.is-active .bottom-tab__lbl { display: inline; }
+
+/* ---------- Center FAB ---------- */
+.bottom-tab__fab-slot { display: inline-flex; justify-content: center; align-items: center; flex: 0 0 auto; }
+.bottom-tab__fab {
+    width: 52px; height: 52px; border-radius: 18px;
+    background: var(--grad);
+    color: #fff; border: 0;
+    box-shadow: 0 10px 22px -6px var(--grad-shadow);
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    transition: transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1);
+    -webkit-tap-highlight-color: transparent;
+}
+.bottom-tab__fab-ico { display: inline-flex; }
+.bottom-tab__fab-ico ::deep .n2f-ico { width: 24px; height: 24px; }
+.bottom-tab__fab:active { transform: scale(0.92); }
+/* Rotate the "+" into an "×" when the sheet is open. */
+.bottom-tab__fab.is-open { transform: rotate(45deg); }
+.bottom-tab__fab.is-open:active { transform: rotate(45deg) scale(0.92); }
+
+/* ---------- Quick-add sheet ---------- */
+.bottom-sheet__backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    z-index: 60;
+    animation: bottom-sheet-fade 180ms ease;
+}
+.bottom-sheet {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    max-width: 520px; margin: 0 auto;
+    background: var(--surface-solid);
+    border: 1px solid var(--border);
+    border-radius: 22px 22px 0 0;
+    padding: 14px 18px 20px;
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+    z-index: 70;
+    box-shadow: 0 -16px 40px -10px rgba(15, 23, 42, 0.30);
+    animation: bottom-sheet-up 220ms cubic-bezier(0.2, 0.9, 0.3, 1);
+    max-height: 84vh; overflow-y: auto;
+}
+.bottom-sheet__handle { width: 36px; height: 4px; background: var(--border-strong); border-radius: 2px; margin: 0 auto 12px; }
+.bottom-sheet__title { font-size: 16px; font-weight: 800; color: var(--text); margin-bottom: 2px; }
+.bottom-sheet__sub { font-size: 11.5px; color: var(--text-muted); margin-bottom: 12px; }
+
+.bottom-sheet__row {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 9px 11px;
+    margin-bottom: 7px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer; text-align: left;
+    -webkit-tap-highlight-color: transparent;
+}
+.bottom-sheet__row:hover { border-color: var(--accent-line); }
+.bottom-sheet__row:active { transform: scale(0.99); }
+.bottom-sheet__row .tile { width: 38px; height: 38px; border-radius: 11px; }
+.bottom-sheet__row-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.bottom-sheet__row-lbl { font-size: 13.5px; font-weight: 700; color: var(--text); line-height: 1.15; }
+.bottom-sheet__row-sub { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
+.bottom-sheet__row-arrow { color: var(--text-faint); display: inline-flex; flex: 0 0 auto; }
+.bottom-sheet__row-arrow ::deep .n2f-ico { width: 18px; height: 18px; }
+
+.bottom-sheet__divider {
+    margin: 13px 0 7px; padding-left: 4px;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+.bottom-sheet__cancel {
+    width: 100%; margin-top: 8px;
+    background: transparent; border: 1px solid var(--border-strong);
+    color: var(--text-muted);
+    border-radius: 12px; padding: 11px;
+    font-size: 13px; font-weight: 700; cursor: pointer;
+}
+.bottom-sheet__cancel:hover { background: var(--surface-3); }
+
+@keyframes bottom-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes bottom-sheet-fade { from { opacity: 0; } to { opacity: 1; } }

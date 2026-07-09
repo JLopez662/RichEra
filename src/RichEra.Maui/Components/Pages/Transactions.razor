@@ -6,12 +6,13 @@
 @inject IAccountService AccountSvc
 @inject ICategoryService CategorySvc
 @inject IItemService ItemSvc
+@inject IBudgetService BudgetSvc
 @inject NavigationManager Nav
 
-<PageTitle>Transactions</PageTitle>
+<PageTitle>Log</PageTitle>
 
 <div class="pg-head">
-    <h1 class="pg-title">Activity</h1>
+    <h1 class="pg-title">Log</h1>
     <div class="head-actions">
         <ThemeToggle />
     </div>
@@ -29,10 +30,58 @@
 
 @if (!IsSearching)
 {
-    <div class="month-nav">
-        <button class="step" @onclick="() => ShiftMonth(-1)" aria-label="Previous month"><Icon Name="chevron-left" /></button>
-        <button class="label" @onclick="OpenMonthPicker">@MonthLabel <Icon Name="chevron-down" Size="15" /></button>
-        <button class="step" @onclick="() => ShiftMonth(1)" aria-label="Next month"><Icon Name="chevron-right" /></button>
+    @if (_mode == LogMode.Day)
+    {
+        <div class="month-nav">
+            <button class="step" @onclick="() => ShiftDay(-1)" aria-label="Previous day"><Icon Name="chevron-left" /></button>
+            <button class="label" @onclick="JumpDayToToday" title="Jump to today">@DayLabel</button>
+            <button class="step" @onclick="() => ShiftDay(1)" aria-label="Next day"><Icon Name="chevron-right" /></button>
+        </div>
+    }
+    else
+    {
+        <div class="month-nav">
+            <button class="step" @onclick="() => ShiftMonth(-1)" aria-label="Previous month"><Icon Name="chevron-left" /></button>
+            <button class="label" @onclick="OpenMonthPicker">@MonthLabel <Icon Name="chevron-down" Size="15" /></button>
+            <button class="step" @onclick="() => ShiftMonth(1)" aria-label="Next month"><Icon Name="chevron-right" /></button>
+        </div>
+    }
+
+    @if (_budget is { } b)
+    {
+        <div class="budget-hero">
+            <div class="bh-top">
+                <span class="bh-title">@BudgetMonthLabel budget · <b class="num">@b.SpendBudget.ToString("C0")</b>@(b.IsManualBudget ? " · pinned" : "")</span>
+                <button class="bh-gear" @onclick="OpenBudgetSheet" aria-label="Budget settings"><Icon Name="sliders" Size="16" /></button>
+            </div>
+            <div class="bh-mid">
+                <div class="bh-stat"><div class="k">Money out</div><div class="v">@b.Spent.ToString("C0")</div></div>
+                <BudgetRing Budget="b" Size="148" />
+                <div class="bh-stat"><div class="k">Money in</div><div class="v in">@b.MoneyIn.ToString("C0")</div></div>
+            </div>
+            @if (b.Macros.Count > 0)
+            {
+                <div class="bh-macro">
+                    <div class="macro-legend">
+                        @foreach (var m in b.Macros)
+                        {
+                            <span><i class="@MacroClass(m.Bucket)"></i>@(m.Pct)% @MacroLabel(m.Bucket)</span>
+                        }
+                    </div>
+                    <div class="macro-bar">
+                        @foreach (var m in b.Macros)
+                        {
+                            <span class="@MacroClass(m.Bucket)" style="width:@(m.Pct)%"></span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="eyebrow log-eyebrow">
+        <span>@(_mode == LogMode.Day ? DayEyebrow : "All activity")</span>
+        <span class="eyebrow__link" @onclick="ToggleMode">@(_mode == LogMode.Day ? "Month view ›" : "Day view ›")</span>
     </div>
 }
 else
@@ -40,13 +89,13 @@ else
     <div class="search-meta">
         @_transactions.Count result@(_transactions.Count == 1 ? "" : "s") for “<b>@_search.Trim()</b>”@(_transactions.Count >= SearchCap ? $" · showing first {SearchCap}" : "")
     </div>
-}
 
-<div class="summary">
-    <div class="chip"><div class="k">Spent</div><div class="v exp">@Spent.ToString("C")</div></div>
-    <div class="chip"><div class="k">Income</div><div class="v inc">@Income.ToString("C")</div></div>
-    <div class="chip"><div class="k">Net</div><div class="v @(NetTotal >= 0 ? "inc" : "exp")">@SignedMoney(NetTotal)</div></div>
-</div>
+    <div class="summary">
+        <div class="chip"><div class="k">Spent</div><div class="v exp">@Spent.ToString("C")</div></div>
+        <div class="chip"><div class="k">Income</div><div class="v inc">@Income.ToString("C")</div></div>
+        <div class="chip"><div class="k">Net</div><div class="v @(NetTotal >= 0 ? "inc" : "exp")">@SignedMoney(NetTotal)</div></div>
+    </div>
+}
 
 @if (_accounts.Count == 0)
 {
@@ -345,7 +394,97 @@ else
     </div>
 }
 
-@if (_transactions.Count == 0)
+@if (_budgetSheet && _budget is { } bb)
+{
+    <div class="detail-backdrop" @onclick="CloseBudgetSheet">
+        <div class="picker" @onclick:stopPropagation="true">
+            <div class="picker-head">
+                <span>@BudgetMonthLabel budget</span>
+                <button class="x" @onclick="CloseBudgetSheet" aria-label="Close">×</button>
+            </div>
+
+            <div class="bs-row"><span>Planned income</span><b class="num in">@bb.PlannedIncome.ToString("C")</b></div>
+            <div class="bs-row"><span>Savings target</span><b class="num">−@bb.SavingsTarget.ToString("C")</b></div>
+            <div class="bs-row total"><span>Suggested budget</span><b class="num">@Math.Max(0m, bb.PlannedIncome - bb.SavingsTarget).ToString("C")</b></div>
+
+            <div class="bs-pin">
+                <label for="budget-pin">Pin a custom budget for @BudgetMonthLabel</label>
+                <div class="bs-input">
+                    <span>$</span>
+                    <input id="budget-pin" type="number" min="0" step="1" @bind="_budgetInput"
+                           placeholder="@bb.SpendBudget.ToString("0")" />
+                </div>
+            </div>
+
+            @if (_budgetError is not null)
+            {
+                <p class="form-error">@_budgetError</p>
+            }
+
+            <div class="bs-actions">
+                @if (bb.IsManualBudget)
+                {
+                    <button class="unpin" @onclick="ClearBudgetOverride">Unpin</button>
+                }
+                <button class="save" @onclick="SaveBudgetOverride">Pin budget</button>
+            </div>
+            <p class="bs-hint">Unpinned, the budget follows your projected income minus your savings
+                target. Money in beyond the plan earns budget back automatically.</p>
+        </div>
+    </div>
+}
+
+@if (!IsSearching && _mode == LogMode.Day)
+{
+    var groups = DayGroups();
+    @if (groups.Count == 0)
+    {
+        <div class="empty-day">
+            <div class="ed-t">Nothing logged @(_day == Today ? "today" : "this day") yet.</div>
+            <div class="ed-s">Money you log lands in its group — Needs, Wants, Debt, Future — and moves the ring.</div>
+        </div>
+    }
+    else
+    {
+        @foreach (var g in groups)
+        {
+            <div class="grp">
+                <div class="grp-head">
+                    <span class="grp-tile @g.Tile"><Icon Name="@g.Icon" Size="15" /></span>
+                    <span class="grp-t">@g.Title<small>@g.Rows.Count logged</small></span>
+                    @if (!g.IsMuted)
+                    {
+                        <span class="grp-sum @(g.IsIncome ? "in" : "")">@((g.IsIncome ? "+" : "−") + g.Subtotal.ToString("C"))</span>
+                    }
+                </div>
+                <div class="grp-rows">
+                    @foreach (var t in g.Rows)
+                    {
+                        <div class="row" @onclick="() => OpenDetail(t)">
+                            <div class="tile @TileClass(t)"><Icon Name="@IconNameFor(t)" /></div>
+                            <div class="mid">
+                                <div class="name">@RowName(t)</div>
+                                <div class="sub">
+                                    @if (QtyLabel(t) is string q)
+                                    {
+                                        <span class="qty-tag">@q</span>
+                                    }
+                                    <span class="acct-tag">@t.AccountName</span>@t.Note
+                                </div>
+                            </div>
+                            <div class="amt @AmtClass(t)">@SignedAmount(t)</div>
+                        </div>
+                    }
+                </div>
+            </div>
+        }
+    }
+
+    <button class="log-add" type="button" @onclick="() => StartNew(TransactionDirection.Expense)">
+        <Icon Name="plus" Size="16" /> Log something
+    </button>
+}
+else if (_transactions.Count == 0)
 {
     <p class="empty">@(IsSearching ? $"No transactions match “{_search.Trim()}”." : $"No transactions in {MonthLabel}.")</p>
 }
@@ -367,8 +506,12 @@ else
                 <div class="row" @onclick="() => OpenDetail(t)">
                     <div class="tile @TileClass(t)"><Icon Name="@IconNameFor(t)" /></div>
                     <div class="mid">
-                        <div class="name">@(t.TransferGroupId is not null ? "Transfer" : (t.CategoryName ?? "Uncategorized"))</div>
+                        <div class="name">@RowName(t)</div>
                         <div class="sub">
+                            @if (QtyLabel(t) is string q)
+                            {
+                                <span class="qty-tag">@q</span>
+                            }
                             <span class="acct-tag">@t.AccountName</span>@t.Note
                         </div>
                     </div>
@@ -390,6 +533,21 @@ else
 
     private int _year = DateTime.Now.Year;
     private int _month = DateTime.Now.Month;
+
+    // Day-paged diary vs the classic month list. Day is the landing mode; the loaded
+    // window is always the whole month _day sits in, so stepping days inside a month
+    // never refetches.
+    private LogMode _mode = LogMode.Day;
+    private enum LogMode { Day, Month }
+    private DateOnly _day = DateOnly.FromDateTime(DateTime.Today);
+    private static DateOnly Today => DateOnly.FromDateTime(DateTime.Today);
+
+    // The viewed month's budget ring + override sheet.
+    private BudgetDto? _budget;
+    private bool _budgetSheet;
+    private decimal? _budgetInput;
+    private string? _budgetError;
+
     private string _search = "";
     private const int SearchCap = 300;
     private bool IsSearching => !string.IsNullOrWhiteSpace(_search);
@@ -412,6 +570,12 @@ else
     private bool IsRecurring => _viewingRule is { IsArchived: false };
 
     private string MonthLabel => new DateOnly(_year, _month, 1).ToString("MMMM yyyy");
+    private string BudgetMonthLabel => new DateOnly(_year, _month, 1).ToString("MMMM");
+    private string DayLabel => _day == Today ? "Today"
+        : _day == Today.AddDays(-1) ? "Yesterday"
+        : _day == Today.AddDays(1) ? "Tomorrow"
+        : _day.ToString("ddd, MMM d");
+    private string DayEyebrow => _day == Today ? "Today's log" : $"Log · {_day:MMM d}";
 
     private decimal Spent => _transactions
         .Where(t => t.TransferGroupId is null && t.Direction == TransactionDirection.Expense)
@@ -427,6 +591,7 @@ else
         {
             _year = y;
             _month = m;
+            _mode = LogMode.Month;   // deep links (e.g. the post-import jump) want the month list
         }
         _accounts = await AccountSvc.ListAsync();
         _categories = await CategorySvc.ListAsync();
@@ -444,10 +609,14 @@ else
         }
     }
 
-    private async Task Reload() =>
+    private async Task Reload()
+    {
         _transactions = IsSearching
             ? await TxnSvc.SearchAsync(_search.Trim(), SearchCap)
             : await TxnSvc.ListAsync(_year, _month);
+        if (!IsSearching)
+            _budget = await BudgetSvc.GetBudgetAsync(_year, _month);
+    }
 
     private async Task OnSearchInput(ChangeEventArgs e)
     {
@@ -496,6 +665,166 @@ else
     private Task JumpToToday() => JumpToMonth(DateTime.Now.Year, DateTime.Now.Month);
 
     private static string MonthAbbrev(int month) => new DateOnly(2000, month, 1).ToString("MMM");
+
+    // ===== Day mode =====
+
+    private async Task ShiftDay(int delta)
+    {
+        CloseSheets();
+        _day = _day.AddDays(delta);
+        await SyncMonthToDayAsync();
+    }
+
+    private async Task JumpDayToToday()
+    {
+        CloseSheets();
+        _day = Today;
+        await SyncMonthToDayAsync();
+    }
+
+    // Crossing a month boundary while day-stepping refetches that month (+ its budget).
+    private async Task SyncMonthToDayAsync()
+    {
+        if (_day.Year == _year && _day.Month == _month) return;
+        _year = _day.Year;
+        _month = _day.Month;
+        await Reload();
+    }
+
+    private void ToggleMode()
+    {
+        CloseSheets();
+        if (_mode == LogMode.Month)
+        {
+            _mode = LogMode.Day;
+            // Land on today when the viewed month contains it, else on the 1st.
+            _day = _year == Today.Year && _month == Today.Month ? Today : new DateOnly(_year, _month, 1);
+        }
+        else
+        {
+            _mode = LogMode.Month;
+        }
+    }
+
+    // ===== Day groups (the money "meals") =====
+
+    private sealed record LogGroup(string Title, string Icon, string Tile, bool IsIncome, bool IsMuted, decimal Subtotal, List<TransactionDto> Rows);
+
+    private static readonly MacroBucket?[] GroupOrder = { MacroBucket.Needs, MacroBucket.Wants, MacroBucket.Debt, MacroBucket.Future, null };
+
+    private List<LogGroup> DayGroups()
+    {
+        var rows = _transactions.Where(t => t.Date == _day).ToList();
+        var groups = new List<LogGroup>();
+
+        // Transfers and reconcile adjustments are movement, not money — they get a muted
+        // group at the bottom instead of counting toward any bucket.
+        var money = rows.Where(t => t.TransferGroupId is null && t.ImportSource != "reconcile").ToList();
+
+        foreach (var bucket in GroupOrder)
+        {
+            var g = money.Where(t => t.Direction == TransactionDirection.Expense && t.Bucket == bucket).ToList();
+            if (g.Count == 0) continue;
+            groups.Add(new LogGroup(MacroLabel(bucket), BucketIcon(bucket), BucketTile(bucket),
+                IsIncome: false, IsMuted: false, g.Sum(t => t.Amount), g));
+        }
+
+        var incoming = money.Where(t => t.Direction == TransactionDirection.Income).ToList();
+        if (incoming.Count > 0)
+            groups.Add(new LogGroup("Money in", "banknote", "tile--green",
+                IsIncome: true, IsMuted: false, incoming.Sum(t => t.Amount), incoming));
+
+        var movement = rows.Where(t => t.TransferGroupId is not null || t.ImportSource == "reconcile").ToList();
+        if (movement.Count > 0)
+            groups.Add(new LogGroup("Transfers & adjustments", "arrow-left-right", "tile--slate",
+                IsIncome: false, IsMuted: true, 0m, movement));
+
+        return groups;
+    }
+
+    private static string MacroLabel(MacroBucket? b) => b switch
+    {
+        MacroBucket.Needs => "Needs",
+        MacroBucket.Wants => "Wants",
+        MacroBucket.Debt => "Debt",
+        MacroBucket.Future => "Future",
+        _ => "Unsorted",
+    };
+
+    private static string MacroClass(MacroBucket? b) => b switch
+    {
+        MacroBucket.Needs => "m-needs",
+        MacroBucket.Wants => "m-wants",
+        MacroBucket.Debt => "m-debt",
+        MacroBucket.Future => "m-future",
+        _ => "m-none",
+    };
+
+    private static string BucketIcon(MacroBucket? b) => b switch
+    {
+        MacroBucket.Needs => "home",
+        MacroBucket.Wants => "sparkles",
+        MacroBucket.Debt => "credit-card",
+        MacroBucket.Future => "trending-up",
+        _ => "more-horizontal",
+    };
+
+    private static string BucketTile(MacroBucket? b) => b switch
+    {
+        MacroBucket.Needs => "tile--blue",
+        MacroBucket.Wants => "tile--amber",
+        MacroBucket.Debt => "tile--rose",
+        MacroBucket.Future => "tile--green",
+        _ => "tile--slate",
+    };
+
+    // Row title: the logged item's name beats the category (a confirmed paycheck reads
+    // "Payroll", not "Salary"); transfers stay "Transfer".
+    private static string RowName(TransactionDto t) =>
+        t.TransferGroupId is not null ? "Transfer" : t.ItemName ?? t.CategoryName ?? "Uncategorized";
+
+    // "2 × tank" serving chip for item-logged rows; null when there's nothing useful to say.
+    private static string? QtyLabel(TransactionDto t)
+    {
+        if (t.ItemName is null || t.TransferGroupId is not null) return null;
+        if (t.Quantity == 1m) return t.UnitName;                  // "month" reads fine alone
+        var qty = t.Quantity.ToString("0.##");
+        return t.UnitName is null ? $"{qty} ×" : $"{qty} × {t.UnitName}";
+    }
+
+    // ===== Budget sheet =====
+
+    private void OpenBudgetSheet()
+    {
+        CloseSheets();
+        _budgetInput = _budget?.IsManualBudget == true ? _budget.SpendBudget : null;
+        _budgetSheet = true;
+    }
+
+    private void CloseBudgetSheet()
+    {
+        _budgetSheet = false;
+        _budgetError = null;
+    }
+
+    private async Task SaveBudgetOverride()
+    {
+        if (_budgetInput is not decimal v || v < 0m)
+        {
+            _budgetError = "Enter a budget of $0 or more.";
+            return;
+        }
+        await BudgetSvc.SetMonthlyOverrideAsync(_year, _month, v);
+        CloseBudgetSheet();
+        await Reload();
+    }
+
+    private async Task ClearBudgetOverride()
+    {
+        await BudgetSvc.SetMonthlyOverrideAsync(_year, _month, null);
+        CloseBudgetSheet();
+        await Reload();
+    }
 
     private IEnumerable<CategoryDto> CategoriesFor(TransactionDirection dir) =>
         _categories.Where(c => !c.IsArchived &&
@@ -628,6 +957,8 @@ else
         _viewingRule = null;
         _recurExpanded = false;
         _showMonthPicker = false;
+        _budgetSheet = false;
+        _budgetError = null;
         _formError = null;
     }
 

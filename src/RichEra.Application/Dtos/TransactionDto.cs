@@ -17,7 +17,10 @@ public record TransactionDto(
     string? ExternalId,         // OFX FITID for imported rows (the bank's reference); null otherwise
     string? ImportSource,       // e.g. "ofx" for imported rows; null for manual/transfer
     Guid? ItemId,               // set when the row logs an Item (confirmed occurrence or ad-hoc log)
-    decimal Quantity = 1m);     // servings logged; Amount is the row total, not per-serving
+    decimal Quantity = 1m,      // servings logged; Amount is the row total, not per-serving
+    MacroBucket? Bucket = null, // effective macro: the item's bucket, else the category's
+    string? ItemName = null,    // when the row logs a library item
+    string? UnitName = null);   // that item's serving name ("month", "tank"…)
 
 public record TransactionUpsertDto(
     Guid? Id,

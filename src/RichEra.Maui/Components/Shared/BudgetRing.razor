@@ -1,0 +1,80 @@
+@* The month's budget ring — the Lose It gauge for dollars. Green arc = spent share of the
+   effective budget; when over budget the ring fills and the overshoot renders as a rose
+   tail (green = the budget's share of the blown total, rose = the excess). Center shows
+   remaining (or overshoot) with a safe-per-day hint. Scales via Size; SVG geometry is a
+   constant 160-unit viewBox so stroke width stays proportional. *@
+@using System.Globalization
+@using RichEra.Application.Dtos
+
+<div class="bring" style="width:@(Size)px;height:@(Size)px" role="img"
+     aria-label="@($"{_bigLabel} {_smlLabel}")">
+    <svg viewBox="0 0 160 160" aria-hidden="true">
+        <defs>
+            <linearGradient id="@_gid" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#34d399" />
+                <stop offset="1" stop-color="#22d3ee" />
+            </linearGradient>
+        </defs>
+        <circle class="track" cx="80" cy="80" r="66" fill="none" stroke-width="13" />
+        @if (_greenLen > 0)
+        {
+            <circle class="val" cx="80" cy="80" r="66" fill="none" stroke="url(#@_gid)" stroke-width="13"
+                    stroke-linecap="round" transform="rotate(-90 80 80)"
+                    stroke-dasharray="@Dash(_greenLen)" />
+        }
+        @if (_redLen > 0)
+        {
+            <circle class="val over" cx="80" cy="80" r="66" fill="none" stroke-width="13"
+                    stroke-linecap="round" transform="rotate(-90 80 80)"
+                    stroke-dasharray="@Dash(_redLen)" stroke-dashoffset="@Inv(-_greenLen)" />
+        }
+    </svg>
+    <div class="center">
+        <div class="big @(_over ? "neg" : "")" style="font-size:@(Inv(Size * 0.175))px">@_bigLabel</div>
+        <div class="sml" style="font-size:@(Inv(Size * 0.078))px">@_smlLabel</div>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public BudgetDto Budget { get; set; } = default!;
+    [Parameter] public int Size { get; set; } = 148;
+
+    private static readonly double C = 2 * Math.PI * 66;
+    private readonly string _gid = $"bring-{Guid.NewGuid():N}";
+
+    private double _greenLen;
+    private double _redLen;
+    private bool _over;
+    private string _bigLabel = "";
+    private string _smlLabel = "";
+
+    protected override void OnParametersSet()
+    {
+        var eff = Budget.EffectiveBudget;
+        var spent = Budget.Spent;
+        _over = Budget.Remaining < 0m;
+
+        if (_over)
+        {
+            var frac = spent > 0m ? (double)(eff / spent) : 0;
+            _greenLen = Math.Clamp(frac, 0, 1) * C;
+            _redLen = C - _greenLen;
+        }
+        else
+        {
+            var frac = eff > 0m ? (double)(spent / eff) : 0;
+            _greenLen = Math.Clamp(frac, 0, 1) * C;
+            _redLen = 0;
+        }
+
+        _bigLabel = Math.Abs(Budget.Remaining).ToString("C0");
+        _smlLabel = _over ? "over budget"
+            : Budget.DaysLeft > 0 && Budget.SafePerDay > 0m ? $"left · ≈{Budget.SafePerDay:C0}/day"
+            : "left";
+    }
+
+    // SVG numbers must be culture-invariant — a comma decimal separator breaks the attribute.
+    private static string Dash(double len) =>
+        string.Create(CultureInfo.InvariantCulture, $"{len:0.##} {C:0.##}");
+    private static string Inv(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+}

@@ -7,6 +7,7 @@
 @inject IItemService ItemSvc
 @inject IIncomeProjectionService Projection
 @inject ISavingsService SavingsSvc
+@inject IBudgetService BudgetSvc
 @inject NavigationManager Nav
 
 <PageTitle>Rich Era</PageTitle>
@@ -70,6 +71,40 @@ else
             </div>
         </div>
     </div>
+
+    @if (_budget is { } bg && (bg.SpendBudget > 0m || bg.Spent > 0m || bg.MoneyIn > 0m))
+    {
+        <div class="eyebrow">
+            <span>Budget</span>
+            <span class="eyebrow__link" @onclick='() => Nav.NavigateTo("transactions")'>Open log ›</span>
+        </div>
+        <div class="bcard" @onclick='() => Nav.NavigateTo("transactions")'>
+            <BudgetRing Budget="bg" Size="86" />
+            <div class="bb">
+                <div class="t1">
+                    @if (bg.Remaining < 0m)
+                    {
+                        <span class="over">@Math.Abs(bg.Remaining).ToString("C0") over budget</span>
+                    }
+                    else
+                    {
+                        <span>@bg.SafePerDay.ToString("C0")/day safe</span>
+                    }
+                    <small>@bg.DaysLeft day@(bg.DaysLeft == 1 ? "" : "s") left</small>
+                </div>
+                <div class="t2">Out @bg.Spent.ToString("C0") · in @bg.MoneyIn.ToString("C0") · budget @bg.SpendBudget.ToString("C0")</div>
+                @if (bg.Macros.Count > 0)
+                {
+                    <div class="macro-bar">
+                        @foreach (var m in bg.Macros)
+                        {
+                            <span class="@MacroClass(m.Bucket)" style="width:@(m.Pct)%"></span>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
 
     @if (_runway is { HasIncome: true } rw)
     {
@@ -205,6 +240,7 @@ else
     private NextCard? _nextExpense;
     private RunwayDto? _runway;
     private SavingsPlanDto? _savings;
+    private BudgetDto? _budget;
     private bool _showBalanceSheet;
 
     protected override Task OnInitializedAsync() => LoadAsync();
@@ -217,11 +253,21 @@ else
         _accounts = await AccountSvc.ListAsync();
 
         ComputeFlow();
+        _budget = await BudgetSvc.GetBudgetAsync(now.Year, now.Month);
         _nextPay = await LoadNextAsync(TransactionDirection.Income);
         _nextExpense = await LoadNextAsync(TransactionDirection.Expense);
         _runway = await Projection.GetRunwayAsync();
         _savings = await SavingsSvc.GetPlanAsync();
     }
+
+    private static string MacroClass(MacroBucket? b) => b switch
+    {
+        MacroBucket.Needs => "m-needs",
+        MacroBucket.Wants => "m-wants",
+        MacroBucket.Debt => "m-debt",
+        MacroBucket.Future => "m-future",
+        _ => "m-none",
+    };
 
     private void CloseBalanceSheet() => _showBalanceSheet = false;
 

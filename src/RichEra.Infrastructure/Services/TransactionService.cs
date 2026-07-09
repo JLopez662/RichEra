@@ -27,7 +27,11 @@ public class TransactionService : ITransactionService
                 t.Id, t.Date, t.AccountId, t.Account!.Name,
                 t.CategoryId, t.Category != null ? t.Category.Name : null,
                 t.Amount, t.Direction, t.Note, t.TransferGroupId,
-                t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity))
+                t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity,
+                t.Item != null && t.Item.Bucket != null ? t.Item.Bucket
+                    : t.Category != null ? t.Category.Bucket : null,
+                t.Item != null ? t.Item.Name : null,
+                t.Item != null ? t.Item.UnitName : null))
             .ToListAsync(ct);
 
         Debug.WriteLine($"[Txns] ListAsync window={from:yyyy-MM-dd}..{to:yyyy-MM-dd} " +
@@ -66,7 +70,11 @@ public class TransactionService : ITransactionService
                 t.Id, t.Date, t.AccountId, t.Account!.Name,
                 t.CategoryId, t.Category != null ? t.Category.Name : null,
                 t.Amount, t.Direction, t.Note, t.TransferGroupId,
-                t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity))
+                t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity,
+                t.Item != null && t.Item.Bucket != null ? t.Item.Bucket
+                    : t.Category != null ? t.Category.Bucket : null,
+                t.Item != null ? t.Item.Name : null,
+                t.Item != null ? t.Item.UnitName : null))
             .ToListAsync(ct);
 
         Debug.WriteLine($"[Txns] SearchAsync '{query}' tokens={tokens.Length} -> {result.Count} rows (cap {limit})");
@@ -90,12 +98,14 @@ public class TransactionService : ITransactionService
         var t = await _db.Transactions.AsNoTracking()
             .Include(x => x.Account)
             .Include(x => x.Category)
+            .Include(x => x.Item)
             .FirstOrDefaultAsync(x => x.Id == id, ct);
         return t is null ? null : new TransactionDto(
             t.Id, t.Date, t.AccountId, t.Account!.Name,
             t.CategoryId, t.Category?.Name,
             t.Amount, t.Direction, t.Note, t.TransferGroupId,
-            t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity);
+            t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity,
+            t.Item?.Bucket ?? t.Category?.Bucket, t.Item?.Name, t.Item?.UnitName);
     }
 
     public async Task<TransactionDto> UpsertAsync(TransactionUpsertDto dto, CancellationToken ct = default)
@@ -161,12 +171,14 @@ public class TransactionService : ITransactionService
         var loaded = await _db.Transactions.AsNoTracking()
             .Include(x => x.Account)
             .Include(x => x.Category)
+            .Include(x => x.Item)
             .FirstAsync(x => x.Id == entity.Id, ct);
         return new TransactionDto(
             loaded.Id, loaded.Date, loaded.AccountId, loaded.Account!.Name,
             loaded.CategoryId, loaded.Category?.Name,
             loaded.Amount, loaded.Direction, loaded.Note, loaded.TransferGroupId,
-            loaded.CreatedUtc, loaded.ExternalId, loaded.ImportSource, loaded.ItemId, loaded.Quantity);
+            loaded.CreatedUtc, loaded.ExternalId, loaded.ImportSource, loaded.ItemId, loaded.Quantity,
+            loaded.Item?.Bucket ?? loaded.Category?.Bucket, loaded.Item?.Name, loaded.Item?.UnitName);
     }
 
     public async Task CreateTransferAsync(TransferUpsertDto dto, CancellationToken ct = default)

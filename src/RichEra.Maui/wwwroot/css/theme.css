@@ -59,6 +59,13 @@
     --rose-ink: #b91c1c;
     --danger-solid: #dc2626;   /* solid destructive button bg (white text, AA in both themes) */
 
+    /* Money macros (budget split): Needs / Wants / Debt / Future / Unsorted */
+    --m-needs: #0ea5e9;
+    --m-wants: #f59e0b;
+    --m-debt: #ef4444;
+    --m-future: #10b981;
+    --m-none: #94a3b8;
+
     /* Chrome */
     --track: rgba(15, 23, 42, 0.08);
     --nav-bg: rgba(255, 255, 255, 0.88);
@@ -122,6 +129,13 @@
     --rose-soft: rgba(251, 113, 133, 0.16);
     --rose-ink: #fda4af;
     --danger-solid: #e11d48;   /* solid destructive button bg (white text, AA in both themes) */
+
+    /* Money macros (budget split) — brighter on Midnight */
+    --m-needs: #38bdf8;
+    --m-wants: #fbbf24;
+    --m-debt: #fb7185;
+    --m-future: #34d399;
+    --m-none: #64748b;
 
     --track: rgba(255, 255, 255, 0.10);
     --nav-bg: rgba(18, 27, 46, 0.90);
@@ -256,6 +270,22 @@
 .pill--ok    { background: var(--accent-soft); color: var(--accent-ink); }
 .pill--info  { background: var(--blue-soft);   color: var(--blue-ink); }
 .pill--muted { background: var(--surface-3);   color: var(--text-muted); }
+
+/* ---- Macro bar (Needs / Wants / Debt / Future split) ----
+   Shared by the Log's budget hero and Home's budget card. Segment widths are
+   inline styles; colours come from the --m-* tokens above. */
+.macro-bar { display: flex; height: 8px; border-radius: 999px; overflow: hidden; background: var(--track); }
+.macro-bar span { height: 100%; }
+.macro-legend {
+    display: flex; flex-wrap: wrap; gap: 4px 13px; justify-content: center;
+    font-size: 11px; font-weight: 650; color: var(--text-muted); margin-bottom: 7px;
+}
+.macro-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.m-needs  { background: var(--m-needs); }
+.m-wants  { background: var(--m-wants); }
+.m-debt   { background: var(--m-debt); }
+.m-future { background: var(--m-future); }
+.m-none   { background: var(--m-none); }
 
 /* ============================================================
    PAGE TRANSITION — replays on each route change (MainLayout restarts

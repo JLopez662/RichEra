@@ -1,7 +1,7 @@
 @* Floating "island" bottom tab bar — replaces the hamburger sidebar. Four
    tabs flank a central FAB ("+") that opens a quick-add / navigate sheet.
 
-   Tabs (left → right):  Home /  ·  Activity /transactions  ·  [+]  ·
+   Tabs (left → right):  Home /  ·  Log /transactions  ·  [+]  ·
                          Paychecks /income  ·  Accounts /accounts
 
    Active highlight is computed from the current URI on every LocationChanged.
@@ -17,8 +17,8 @@
             <span class="bottom-tab__lbl">Home</span>
         </button>
         <button class="bottom-tab @(IsActivity ? "is-active" : "")" type="button" @onclick="GoActivity">
-            <span class="bottom-tab__ico"><Icon Name="list" /></span>
-            <span class="bottom-tab__lbl">Activity</span>
+            <span class="bottom-tab__ico"><Icon Name="book-open" /></span>
+            <span class="bottom-tab__lbl">Log</span>
         </button>
     </div>
 

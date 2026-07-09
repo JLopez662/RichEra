@@ -1,0 +1,82 @@
+.loading { color: var(--text-muted); }
+
+/* ===== MONTH NAV (read-only label variant) ===== */
+.month-nav { display: flex; align-items: center; gap: 10px; margin: 14px 0 15px; }
+.month-nav .step {
+    width: 40px; height: 40px; border-radius: 13px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+    box-shadow: 0 1px 0 var(--inner-top) inset; cursor: pointer;
+}
+.month-nav .step:hover { border-color: var(--accent-line); color: var(--accent-ink); }
+.month-nav .label { flex: 1; text-align: center; font-size: 16.5px; font-weight: 750; color: var(--text); }
+
+/* ===== GRADE HERO ===== */
+.grade-hero {
+    display: flex; align-items: center; gap: 15px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 16px;
+    box-shadow: 0 1px 0 var(--inner-top) inset, var(--shadow-sm);
+    margin-bottom: 12px;
+}
+.grade.big { width: 54px; height: 54px; border-radius: 16px; font-size: 27px; }
+.gh-body { flex: 1; min-width: 0; }
+.gh-t { font-size: 15.5px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; }
+.gh-s { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 3px; line-height: 1.45; }
+
+/* ===== RING ROW ===== */
+.rep-ring {
+    display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 13px 14px;
+    box-shadow: 0 1px 0 var(--inner-top) inset, var(--shadow-sm);
+}
+.rr-stat { text-align: center; }
+.rr-stat .k { font-size: 11.5px; color: var(--text-muted); font-weight: 650; margin-bottom: 2px; }
+.rr-stat .v { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.rr-stat .v.in { color: var(--accent-ink); }
+
+/* ===== CARDS ===== */
+.rep-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 13px 14px;
+    box-shadow: var(--shadow-sm);
+}
+.rep-card.list { padding: 4px 14px; }
+
+/* Macro-vs-guide rows */
+.mrow { padding: 7px 0; }
+.mrow .ml { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.mrow .mname { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 700; color: var(--text); }
+.mrow .mname i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.mrow .mnum { font-size: 13px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.mrow .mnum small { font-weight: 600; color: var(--text-faint); }
+.mrow .mbar { position: relative; height: 8px; border-radius: 99px; background: var(--track); overflow: visible; }
+.mrow .mbar .fill { position: absolute; inset: 0 auto 0 0; border-radius: 99px; }
+.mrow .mbar .tick {
+    position: absolute; top: -3px; bottom: -3px; width: 2px; border-radius: 1px;
+    background: var(--text-faint); transform: translateX(-50%);
+}
+
+/* Grade mix */
+.gmix-bar { display: flex; height: 12px; border-radius: 99px; overflow: hidden; background: var(--track); }
+.gmix-bar span { height: 100%; }
+.gmix-bar .grade--a { background: var(--m-future); }
+.gmix-bar .grade--b { background: var(--m-needs); }
+.gmix-bar .grade--c { background: var(--m-wants); }
+.gmix-bar .grade--d { background: var(--m-debt); }
+.gmix-legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 9px; font-size: 11.5px; font-weight: 650; color: var(--text-muted); }
+.gmix-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; }
+.gmix-legend .grade--a i, .gmix-legend i.grade--a { background: var(--m-future); }
+.gmix-legend i.grade--b { background: var(--m-needs); }
+.gmix-legend i.grade--c { background: var(--m-wants); }
+.gmix-legend i.grade--d { background: var(--m-debt); }
+.gmix-legend i.m-none { background: var(--m-none); }
+
+/* Top moves / time rows */
+.trow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.trow:last-child { border-bottom: none; }
+.trow .tn { font-size: 13.5px; font-weight: 700; color: var(--text); min-width: 0; }
+.trow .tn small { display: block; font-size: 10.5px; font-weight: 600; color: var(--text-faint); margin-top: 1px; }
+.trow .ta { font-size: 14px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.trow .ta.good { color: var(--accent-ink); }

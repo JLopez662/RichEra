@@ -6,6 +6,7 @@
 @inject IIncomeProjectionService Projection
 @inject ITransactionService Txns
 @inject ISavingsService SavingsSvc
+@inject IBundleService BundleSvc
 @inject NavigationManager Nav
 
 <PageTitle>@(ShowReceipt ? "Order placed" : "Cart")</PageTitle>
@@ -26,6 +27,28 @@
     </div>
     <p class="hint">Placing the order is a simulation — no money moves. You'll confirm real payments on the receipt.</p>
     <button class="bigbuy" @onclick="PlaceOrder">Place order · @Cart.Total.ToString("C")</button>
+
+    @if (_bundleSaved is string savedName)
+    {
+        <p class="bundle-ok"><Icon Name="check" Size="14" /> Saved as “@savedName” — it's in the Library's Bundles tab.</p>
+    }
+    else if (_showBundleForm)
+    {
+        <div class="bundle-form">
+            <input type="text" @bind="_bundleName" placeholder="Name it — “Costco run”, “Payday routine”…" />
+            <button class="bsave" @onclick="SaveBundleAsync">Save</button>
+        </div>
+        @if (_bundleErr is not null)
+        {
+            <p class="err">@_bundleErr</p>
+        }
+    }
+    else
+    {
+        <button class="bundle-link" @onclick="() => _showBundleForm = true">
+            <Icon Name="layers" Size="15" /> Save this cart as a bundle
+        </button>
+    }
 }
 else if (ShowReceipt)
 {
@@ -75,6 +98,12 @@ else
     private bool _busy;
     private string? _err;
 
+    // Save-as-bundle mini-form state.
+    private bool _showBundleForm;
+    private string _bundleName = "";
+    private string? _bundleSaved;
+    private string? _bundleErr;
+
     private bool ShowReceipt => Cart.HasOpenReceipt;
     private bool AllLogged => Cart.LastOrder.Count > 0 && Cart.LastOrder.All(l => l.PaymentMade);
 
@@ -82,6 +111,32 @@ else
     {
         _err = null;
         Cart.PlaceOrder();
+    }
+
+    // Freeze the cart as a named recipe. The cart itself is untouched — saving is a copy,
+    // not a checkout.
+    private async Task SaveBundleAsync()
+    {
+        _bundleErr = null;
+        if (string.IsNullOrWhiteSpace(_bundleName))
+        {
+            _bundleErr = "Give the bundle a name.";
+            return;
+        }
+        try
+        {
+            var lines = Cart.Lines
+                .Select(l => new BundleLineInput(l.Kind.ToString().ToLowerInvariant(), l.Id, l.Amount, l.FromAccountId, l.Title))
+                .ToList();
+            var saved = await BundleSvc.CreateAsync(_bundleName.Trim(), lines);
+            _bundleSaved = saved.Name;
+            _showBundleForm = false;
+            _bundleName = "";
+        }
+        catch (ArgumentException ex)
+        {
+            _bundleErr = ex.Message;
+        }
     }
 
     private void Remove(ShopCartLine l) => Cart.Remove(l.Kind, l.Id);

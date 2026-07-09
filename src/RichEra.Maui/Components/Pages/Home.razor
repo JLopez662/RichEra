@@ -8,6 +8,7 @@
 @inject IIncomeProjectionService Projection
 @inject ISavingsService SavingsSvc
 @inject IBudgetService BudgetSvc
+@inject IBalanceSnapshotService SnapshotSvc
 @inject NavigationManager Nav
 
 <PageTitle>Rich Era</PageTitle>
@@ -102,6 +103,24 @@ else
                         }
                     </div>
                 }
+            </div>
+        </div>
+    }
+
+    @if (_trend.Count >= 2)
+    {
+        <div class="eyebrow">
+            <span>Net-worth weigh-in</span>
+            <span class="eyebrow__link">@_trend.Count check-ins</span>
+        </div>
+        <div class="trend-card">
+            <svg class="spark" viewBox="0 0 200 52" preserveAspectRatio="none" aria-hidden="true">
+                <polyline class="line" points="@SparkPoints()" />
+                <circle class="dot" cx="@LastX" cy="@LastY" r="3" />
+            </svg>
+            <div class="tmeta">
+                <span class="delta @(TrendDelta >= 0 ? "up" : "down")">@((TrendDelta >= 0 ? "▲ +" : "▼ −") + Math.Abs(TrendDelta).ToString("C0"))</span>
+                <span class="range">since @_trend[0].Date.ToString("MMM d")</span>
             </div>
         </div>
     }
@@ -241,7 +260,45 @@ else
     private RunwayDto? _runway;
     private SavingsPlanDto? _savings;
     private BudgetDto? _budget;
+    private IReadOnlyList<BalanceTrendPointDto> _trend = Array.Empty<BalanceTrendPointDto>();
     private bool _showBalanceSheet;
+
+    private decimal TrendDelta => _trend.Count < 2 ? 0m : _trend[^1].Total - _trend[0].Total;
+    private string LastX => _trend.Count == 0 ? "200" : "200";
+    private string LastY
+    {
+        get
+        {
+            if (_trend.Count == 0) return "26";
+            var min = _trend.Min(p => p.Total);
+            var max = _trend.Max(p => p.Total);
+            return SparkY(_trend[^1].Total, min, max);
+        }
+    }
+
+    // Sparkline points in a fixed 200×52 viewBox (invariant culture — SVG needs dots).
+    private string SparkPoints()
+    {
+        var min = _trend.Min(p => p.Total);
+        var max = _trend.Max(p => p.Total);
+        var x0 = _trend[0].Date.DayNumber;
+        var spanX = Math.Max(1, _trend[^1].Date.DayNumber - x0);
+        var sb = new System.Text.StringBuilder();
+        foreach (var p in _trend)
+        {
+            var x = (p.Date.DayNumber - x0) / (double)spanX * 200.0;
+            sb.Append(x.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))
+              .Append(',').Append(SparkY(p.Total, min, max)).Append(' ');
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    private static string SparkY(decimal value, decimal min, decimal max)
+    {
+        var span = (double)(max - min);
+        var y = span <= 0 ? 26.0 : 48.0 - (double)(value - min) / span * 44.0;
+        return y.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+    }
 
     protected override Task OnInitializedAsync() => LoadAsync();
 
@@ -254,6 +311,12 @@ else
 
         ComputeFlow();
         _budget = await BudgetSvc.GetBudgetAsync(now.Year, now.Month);
+
+        // The passive weigh-in: opening Home records today's total, so the trend accrues
+        // without any ceremony. Explicit balance corrections land here too (they reload).
+        await SnapshotSvc.RecordAsync(_summary.TotalAccountBalance);
+        _trend = await SnapshotSvc.GetTrendAsync(90);
+
         _nextPay = await LoadNextAsync(TransactionDirection.Income);
         _nextExpense = await LoadNextAsync(TransactionDirection.Expense);
         _runway = await Projection.GetRunwayAsync();

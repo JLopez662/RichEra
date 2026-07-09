@@ -15,6 +15,9 @@ public class AppDbContext : DbContext
     public DbSet<SavingsContribution> SavingsContributions => Set<SavingsContribution>();
     public DbSet<ItemImage> ItemImages => Set<ItemImage>();
     public DbSet<Setting> Settings => Set<Setting>();
+    public DbSet<Bundle> Bundles => Set<Bundle>();
+    public DbSet<BundleLine> BundleLines => Set<BundleLine>();
+    public DbSet<BalanceSnapshot> BalanceSnapshots => Set<BalanceSnapshot>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -85,6 +88,30 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Key);
             e.Property(x => x.Key).HasMaxLength(120);
             e.Property(x => x.Value).IsRequired().HasMaxLength(2000);
+        });
+
+        b.Entity<Bundle>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Name).IsRequired().HasMaxLength(120);
+            e.HasMany(x => x.Lines).WithOne(x => x.Bundle).HasForeignKey(x => x.BundleId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => x.IsArchived);
+        });
+
+        b.Entity<BundleLine>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Kind).IsRequired().HasMaxLength(16);
+            e.Property(x => x.Amount).HasPrecision(18, 4);
+            e.Property(x => x.TitleSnapshot).IsRequired().HasMaxLength(140);
+            e.HasIndex(x => x.BundleId);
+        });
+
+        b.Entity<BalanceSnapshot>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.TotalBalance).HasPrecision(18, 4);
+            e.HasIndex(x => x.Date).IsUnique();   // one weigh-in per day
         });
 
         b.Entity<SavingsGoal>(e =>

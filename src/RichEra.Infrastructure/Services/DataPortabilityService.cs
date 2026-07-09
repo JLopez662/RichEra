@@ -37,6 +37,9 @@ public class DataPortabilityService : IDataPortabilityService
                 Transactions = await _db.Transactions.AsNoTracking().ToListAsync(ct),
                 ItemImages   = await _db.ItemImages.AsNoTracking().ToListAsync(ct),
                 Settings     = await _db.Settings.AsNoTracking().ToListAsync(ct),
+                Bundles      = await _db.Bundles.AsNoTracking().ToListAsync(ct),
+                BundleLines  = await _db.BundleLines.AsNoTracking().ToListAsync(ct),
+                BalanceSnapshots = await _db.BalanceSnapshots.AsNoTracking().ToListAsync(ct),
             },
         };
 
@@ -78,8 +81,11 @@ public class DataPortabilityService : IDataPortabilityService
             await _db.Items.ExecuteDeleteAsync(ct);
             await _db.Categories.ExecuteDeleteAsync(ct);
             await _db.Accounts.ExecuteDeleteAsync(ct);
-            await _db.ItemImages.ExecuteDeleteAsync(ct); // no FK; order is irrelevant
-            await _db.Settings.ExecuteDeleteAsync(ct);   // no FK; order is irrelevant
+            await _db.BundleLines.ExecuteDeleteAsync(ct);     // child of Bundles
+            await _db.Bundles.ExecuteDeleteAsync(ct);
+            await _db.ItemImages.ExecuteDeleteAsync(ct);      // no FK; order is irrelevant
+            await _db.Settings.ExecuteDeleteAsync(ct);        // no FK; order is irrelevant
+            await _db.BalanceSnapshots.ExecuteDeleteAsync(ct); // no FK; order is irrelevant
 
             // ExecuteDelete bypasses the change tracker, so entities loaded earlier in this
             // (long-lived Blazor) scope are still tracked under their old ids. Detach them or
@@ -93,6 +99,12 @@ public class DataPortabilityService : IDataPortabilityService
             _db.Transactions.AddRange(data.Transactions);
             _db.ItemImages.AddRange(data.ItemImages);
             _db.Settings.AddRange(data.Settings);
+            // A serialized Bundle may embed its lines; adding both the graph and the flat
+            // BundleLines list would double them, so strip embedded lines and trust the flat list.
+            foreach (var bundle in data.Bundles) bundle.Lines.Clear();
+            _db.Bundles.AddRange(data.Bundles);
+            _db.BundleLines.AddRange(data.BundleLines);
+            _db.BalanceSnapshots.AddRange(data.BalanceSnapshots);
             await _db.SaveChangesAsync(ct);
 
             await tx.CommitAsync(ct);

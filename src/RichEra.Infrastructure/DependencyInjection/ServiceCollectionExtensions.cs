@@ -34,6 +34,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IBudgetService, BudgetService>();
         services.AddScoped<ISavingsService, SavingsService>();
         services.AddScoped<IItemImageService, ItemImageService>();
+        services.AddScoped<IBundleService, BundleService>();
+        services.AddScoped<IBalanceSnapshotService, BalanceSnapshotService>();
 
         services.AddScoped<IOfxParser, OfxParser>();
         services.AddScoped<IStatementImportService, StatementImportService>();

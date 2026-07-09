@@ -2,9 +2,12 @@
 @using RichEra.Application.Abstractions
 @using RichEra.Application.Dtos
 @using RichEra.Domain.Entities
+@using RichEra.Maui.Services
 @inject IItemService ItemSvc
 @inject ITransactionService TxnSvc
 @inject IIncomeProjectionService Projection
+@inject IBundleService BundleSvc
+@inject ShopCartState Cart
 @inject NavigationManager Nav
 
 <PageTitle>Library</PageTitle>
@@ -35,11 +38,51 @@
     <button class="libtab @(_filter == Filter.All ? "on" : "")" @onclick="() => _filter = Filter.All">All</button>
     <button class="libtab @(_filter == Filter.Out ? "on" : "")" @onclick="() => _filter = Filter.Out">Money out</button>
     <button class="libtab @(_filter == Filter.In ? "on" : "")" @onclick="() => _filter = Filter.In">Money in</button>
+    <button class="libtab @(_filter == Filter.Bundles ? "on" : "")" @onclick="() => _filter = Filter.Bundles">Bundles</button>
 </div>
 
 @if (_loading)
 {
     <p class="loading"><em>Loading…</em></p>
+}
+else if (_filter == Filter.Bundles)
+{
+    <div class="eyebrow">
+        <span>Saved carts</span>
+        <span class="eyebrow__link" @onclick='() => Nav.NavigateTo("/shop")'>Build one in the shop ›</span>
+    </div>
+
+    @if (_bundles.Count == 0)
+    {
+        <div class="lib-empty">
+            <div class="le-t">No bundles yet.</div>
+            <div class="le-s">A bundle is a saved cart — “Costco run”, “Payday routine”. Fill the shop
+                cart once, save it, and re-run the whole thing in one tap.</div>
+        </div>
+    }
+    else
+    {
+        <div class="lib-list">
+            @foreach (var b in _bundles)
+            {
+                <div class="lrow" @onclick="() => LoadBundle(b)">
+                    <div class="tile tile--violet"><Icon Name="layers" /></div>
+                    <div class="mid">
+                        <div class="name">@b.Name</div>
+                        <div class="sub">@b.LineCount payment@(b.LineCount == 1 ? "" : "s") · ≈@b.Total.ToString("C")@(b.UnavailableCount > 0 ? $" · {b.UnavailableCount} no longer exist" : "")</div>
+                    </div>
+                    <button class="qlog" title="Load into cart" aria-label="@($"Load {b.Name} into the cart")"
+                            @onclick="() => LoadBundle(b)" @onclick:stopPropagation="true">
+                        <Icon Name="shopping-cart" />
+                    </button>
+                    <button class="bdel" aria-label="@($"Delete {b.Name}")"
+                            @onclick="() => ArchiveBundleAsync(b)" @onclick:stopPropagation="true">
+                        <Icon Name="x" Size="14" />
+                    </button>
+                </div>
+            }
+        </div>
+    }
 }
 else
 {
@@ -98,12 +141,13 @@ else
 }
 
 @code {
-    private enum Filter { All, Out, In }
+    private enum Filter { All, Out, In, Bundles }
 
     private bool _loading = true;
     private string _search = string.Empty;
     private Filter _filter = Filter.All;
     private IReadOnlyList<ItemDto> _items = Array.Empty<ItemDto>();
+    private IReadOnlyList<BundleDto> _bundles = Array.Empty<BundleDto>();
     private IReadOnlyDictionary<Guid, DateOnly> _lastLogged = new Dictionary<Guid, DateOnly>();
     private readonly Dictionary<Guid, DateOnly> _nextDue = new();
     private Guid? _justLogged;
@@ -112,6 +156,7 @@ else
     {
         _items = await ItemSvc.ListAsync();
         _lastLogged = await ItemSvc.GetLastLoggedAsync();
+        _bundles = await BundleSvc.ListAsync();
 
         // Next occurrence per scheduled item (same per-item lookup the shop uses).
         foreach (var it in _items.Where(i => i.HasSchedule))
@@ -122,6 +167,40 @@ else
 
         _loading = false;
     }
+
+    // ===== Bundles =====
+
+    // Rehydrate the saved cart: available lines only, live titles, then straight to checkout.
+    private void LoadBundle(BundleDto b)
+    {
+        foreach (var l in b.Lines.Where(l => l.IsAvailable))
+        {
+            Cart.Add(new ShopCartLine
+            {
+                Kind = ParseKind(l.Kind),
+                Id = l.OwnerId,
+                Title = l.Title,
+                Icon = l.Kind switch { "card" => "credit-card", "savings" => "piggy-bank", _ => "receipt" },
+                Amount = l.Amount,
+                FromAccountId = l.FromAccountId,
+                FromName = l.FromName,
+            });
+        }
+        Nav.NavigateTo("/shop/cart");
+    }
+
+    private async Task ArchiveBundleAsync(BundleDto b)
+    {
+        await BundleSvc.ArchiveAsync(b.Id);
+        _bundles = await BundleSvc.ListAsync();
+    }
+
+    private static ShopItemKind ParseKind(string kind) => kind switch
+    {
+        "card" => ShopItemKind.Card,
+        "savings" => ShopItemKind.Savings,
+        _ => ShopItemKind.Expense,
+    };
 
     private IEnumerable<ItemDto> Filtered
     {

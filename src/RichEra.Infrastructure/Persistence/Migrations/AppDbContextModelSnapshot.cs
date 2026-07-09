@@ -62,6 +62,87 @@ namespace RichEra.Infrastructure.Persistence.Migrations
                     b.ToTable("Accounts");
                 });
 
+            modelBuilder.Entity("RichEra.Domain.Entities.BalanceSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("TotalBalance")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Date")
+                        .IsUnique();
+
+                    b.ToTable("BalanceSnapshots");
+                });
+
+            modelBuilder.Entity("RichEra.Domain.Entities.Bundle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("CreatedUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IsArchived");
+
+                    b.ToTable("Bundles");
+                });
+
+            modelBuilder.Entity("RichEra.Domain.Entities.BundleLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 4)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("BundleId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("FromAccountId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TitleSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(140)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BundleId");
+
+                    b.ToTable("BundleLines");
+                });
+
             modelBuilder.Entity("RichEra.Domain.Entities.Category", b =>
                 {
                     b.Property<Guid>("Id")
@@ -381,6 +462,17 @@ namespace RichEra.Infrastructure.Persistence.Migrations
                     b.ToTable("Transactions");
                 });
 
+            modelBuilder.Entity("RichEra.Domain.Entities.BundleLine", b =>
+                {
+                    b.HasOne("RichEra.Domain.Entities.Bundle", "Bundle")
+                        .WithMany("Lines")
+                        .HasForeignKey("BundleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Bundle");
+                });
+
             modelBuilder.Entity("RichEra.Domain.Entities.Item", b =>
                 {
                     b.HasOne("RichEra.Domain.Entities.Account", "Account")
@@ -443,6 +535,11 @@ namespace RichEra.Infrastructure.Persistence.Migrations
                     b.Navigation("Category");
 
                     b.Navigation("Item");
+                });
+
+            modelBuilder.Entity("RichEra.Domain.Entities.Bundle", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

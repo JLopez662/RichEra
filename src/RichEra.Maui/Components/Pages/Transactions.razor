@@ -76,6 +76,12 @@
                     </div>
                 </div>
             }
+            @if (_mode == LogMode.Month)
+            {
+                <button class="bh-report" @onclick='() => Nav.NavigateTo($"/report/{_year}/{_month}")'>
+                    Month report card ›
+                </button>
+            }
         </div>
     }
 

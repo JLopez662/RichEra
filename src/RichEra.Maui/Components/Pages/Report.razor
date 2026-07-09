@@ -1,0 +1,279 @@
+@page "/report"
+@page "/report/{Year:int}/{Month:int}"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject IBudgetService BudgetSvc
+@inject ITransactionService TxnSvc
+@inject IItemService ItemSvc
+@inject NavigationManager Nav
+
+<PageTitle>Report card</PageTitle>
+
+@* The month's report card — Lose It's weekly summary, graded. Everything here is derived:
+   the GPA from per-row grades (item grade first, bucket fallback), macros against the
+   50/30/20 guide, and the whole month priced in hours of work. *@
+
+<div class="pg-head">
+    <a class="back-chip" href="/transactions"><Icon Name="chevron-left" Size="16" /> Log</a>
+    <div class="head-actions"><ThemeToggle /></div>
+</div>
+
+<div class="month-nav">
+    <button class="step" @onclick="() => Shift(-1)" aria-label="Previous month"><Icon Name="chevron-left" /></button>
+    <span class="label">@MonthLabel report card</span>
+    <button class="step" @onclick="() => Shift(1)" aria-label="Next month"><Icon Name="chevron-right" /></button>
+</div>
+
+@if (_budget is not { } b)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else
+{
+    <div class="grade-hero">
+        @if (_gpaLetter is string letter)
+        {
+            <span class="grade big @_gpaCss">@letter</span>
+        }
+        else
+        {
+            <span class="grade big grade--sm-none">—</span>
+        }
+        <div class="gh-body">
+            <div class="gh-t">@Verdict(b)</div>
+            <div class="gh-s">@SubVerdict(b)</div>
+        </div>
+    </div>
+
+    <div class="rep-ring">
+        <div class="rr-stat"><div class="k">Money out</div><div class="v">@b.Spent.ToString("C0")</div></div>
+        <BudgetRing Budget="b" Size="124" />
+        <div class="rr-stat"><div class="k">Money in</div><div class="v in">@b.MoneyIn.ToString("C0")</div></div>
+    </div>
+
+    @if (b.Spent > 0m)
+    {
+        <div class="eyebrow"><span>Macros vs the 50 / 30 / 20 guide</span></div>
+        <div class="rep-card">
+            @foreach (var row in MacroRows(b))
+            {
+                <div class="mrow">
+                    <div class="ml">
+                        <span class="mname"><i class="@row.Css"></i>@row.Label</span>
+                        <span class="mnum">@(row.ActualPct)%<small>@(row.GuidePct is int gp ? $" · guide {gp}%" : "")</small></span>
+                    </div>
+                    <div class="mbar">
+                        <span class="fill @row.Css" style="width:@(Math.Min(row.ActualPct, 100))%"></span>
+                        @if (row.GuidePct is int guide)
+                        {
+                            <span class="tick" style="left:@(guide)%"></span>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+
+        <div class="eyebrow"><span>Grade mix of the outflow</span></div>
+        <div class="rep-card">
+            <div class="gmix-bar">
+                @foreach (var g in _gradeMix)
+                {
+                    <span class="@g.Css" style="width:@(g.Pct)%"></span>
+                }
+            </div>
+            <div class="gmix-legend">
+                @foreach (var g in _gradeMix)
+                {
+                    <span><i class="@g.Css"></i>@g.Label @(g.Pct)%</span>
+                }
+            </div>
+        </div>
+
+        @if (_topMoves.Count > 0)
+        {
+            <div class="eyebrow"><span>Biggest money moves</span></div>
+            <div class="rep-card list">
+                @foreach (var m in _topMoves)
+                {
+                    <div class="trow">
+                        <span class="tn">@m.Name<small>@m.Count log@(m.Count == 1 ? "" : "s")</small></span>
+                        <span class="ta">−@m.Total.ToString("C0")</span>
+                    </div>
+                }
+            </div>
+        }
+
+        @if (_hourly > 0m)
+        {
+            <div class="eyebrow"><span>Your time</span></div>
+            <div class="rep-card">
+                <div class="trow">
+                    <span class="tn">Hours worked to fund the month<small>at ≈@_hourly.ToString("C0")/hr from planned income</small></span>
+                    <span class="ta">@((b.Spent / _hourly).ToString("0")) hrs</span>
+                </div>
+                @if (_futureAmount > 0m)
+                {
+                    <div class="trow">
+                        <span class="tn">Sent to future you<small>Future-bucket outflow</small></span>
+                        <span class="ta good">@_futureAmount.ToString("C0")</span>
+                    </div>
+                }
+            </div>
+        }
+    }
+    else
+    {
+        <p class="loading">Nothing logged in @MonthLabel yet — the report card fills in as you log.</p>
+    }
+}
+
+@code {
+    [Parameter] public int? Year { get; set; }
+    [Parameter] public int? Month { get; set; }
+
+    private int _year = DateTime.Now.Year;
+    private int _month = DateTime.Now.Month;
+    private BudgetDto? _budget;
+    private decimal _hourly;
+    private decimal _futureAmount;
+    private string? _gpaLetter;
+    private string _gpaCss = "";
+    private List<(string Label, string Css, int Pct)> _gradeMix = new();
+    private List<(string Name, int Count, decimal Total)> _topMoves = new();
+
+    private string MonthLabel => new DateOnly(_year, _month, 1).ToString("MMMM yyyy");
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (Year is int y && Month is int m && m is >= 1 and <= 12)
+        {
+            _year = y;
+            _month = m;
+        }
+        await LoadAsync();
+    }
+
+    private async Task Shift(int delta)
+    {
+        var d = new DateOnly(_year, _month, 1).AddMonths(delta);
+        _year = d.Year;
+        _month = d.Month;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _budget = await BudgetSvc.GetBudgetAsync(_year, _month);
+        _hourly = _budget.PlannedIncome > 0m ? Math.Round(_budget.PlannedIncome / 173.33m, 2) : 0m;
+
+        var txns = await TxnSvc.ListAsync(_year, _month);
+        var items = (await ItemSvc.ListAsync(includeArchived: true)).ToDictionary(i => i.Id);
+
+        // Real outflow only — transfers and reconcile rows are movement, not money.
+        var outflow = txns
+            .Where(t => t.TransferGroupId is null && t.ImportSource != "reconcile"
+                        && t.Direction == TransactionDirection.Expense)
+            .ToList();
+
+        _futureAmount = outflow.Where(t => t.Bucket == MacroBucket.Future).Sum(t => t.Amount);
+        ComputeGrades(outflow, items);
+        ComputeTopMoves(outflow);
+    }
+
+    // Per-row grade: the logged item's computed grade when there is one, else the bucket's
+    // rough equivalent (Needs B, Wants C, Debt D, Future A). GPA = amount-weighted average.
+    private void ComputeGrades(List<TransactionDto> outflow, Dictionary<Guid, ItemDto> items)
+    {
+        var byGrade = new Dictionary<string, decimal>();
+        decimal gradedTotal = 0m, points = 0m, ungraded = 0m;
+
+        foreach (var t in outflow)
+        {
+            string? letter = null;
+            if (t.ItemId is Guid iid && items.TryGetValue(iid, out var item) && GradeUi.For(item) is { } g)
+                letter = g.Letter;
+            else
+                letter = t.Bucket switch
+                {
+                    MacroBucket.Needs => "B",
+                    MacroBucket.Wants => "C",
+                    MacroBucket.Debt => "D",
+                    MacroBucket.Future => "A",
+                    _ => null,
+                };
+
+            if (letter is null) { ungraded += t.Amount; continue; }
+            byGrade[letter] = byGrade.GetValueOrDefault(letter) + t.Amount;
+            gradedTotal += t.Amount;
+            points += t.Amount * letter switch { "A" => 4m, "B" => 3m, "C" => 2m, _ => 1m };
+        }
+
+        if (gradedTotal > 0m)
+        {
+            var gpa = points / gradedTotal;
+            (_gpaLetter, _gpaCss) = gpa switch
+            {
+                >= 3.5m => ("A", "grade--a"),
+                >= 2.5m => ("B", "grade--b"),
+                >= 1.5m => ("C", "grade--c"),
+                _ => ("D", "grade--d"),
+            };
+        }
+        else
+        {
+            _gpaLetter = null;
+            _gpaCss = "";
+        }
+
+        var total = gradedTotal + ungraded;
+        _gradeMix = new List<(string, string, int)>();
+        if (total <= 0m) return;
+        foreach (var letter in new[] { "A", "B", "C", "D" })
+        {
+            if (!byGrade.TryGetValue(letter, out var amt) || amt <= 0m) continue;
+            _gradeMix.Add((letter, letter switch { "A" => "grade--a", "B" => "grade--b", "C" => "grade--c", _ => "grade--d" },
+                (int)Math.Round(amt / total * 100m)));
+        }
+        if (ungraded > 0m)
+            _gradeMix.Add(("Unsorted", "m-none", (int)Math.Round(ungraded / total * 100m)));
+    }
+
+    private void ComputeTopMoves(List<TransactionDto> outflow)
+    {
+        _topMoves = outflow
+            .GroupBy(t => t.ItemName ?? t.CategoryName ?? "Uncategorized")
+            .Select(g => (Name: g.Key, Count: g.Count(), Total: g.Sum(t => t.Amount)))
+            .OrderByDescending(g => g.Total)
+            .Take(3)
+            .ToList();
+    }
+
+    // "Needs 64% · guide 50%" rows. Debt has no guide — the guide for debt is zero.
+    private IEnumerable<(string Label, string Css, int ActualPct, int? GuidePct)> MacroRows(BudgetDto b)
+    {
+        int Pct(MacroBucket? bucket) =>
+            b.Macros.FirstOrDefault(m => m.Bucket == bucket)?.Pct ?? 0;
+
+        yield return ("Needs", "m-needs", Pct(MacroBucket.Needs), 50);
+        yield return ("Wants", "m-wants", Pct(MacroBucket.Wants), 30);
+        yield return ("Future", "m-future", Pct(MacroBucket.Future), 20);
+        var debt = Pct(MacroBucket.Debt);
+        if (debt > 0) yield return ("Debt", "m-debt", debt, null);
+        var unsorted = Pct(null);
+        if (unsorted > 0) yield return ("Unsorted", "m-none", unsorted, null);
+    }
+
+    private static string Verdict(BudgetDto b) => b.Remaining >= 0m
+        ? $"Kept {b.Remaining:C0} under budget."
+        : $"{Math.Abs(b.Remaining):C0} over budget.";
+
+    private string SubVerdict(BudgetDto b)
+    {
+        var parts = new List<string>();
+        if (b.ExtraIn > 0m) parts.Add($"{b.ExtraIn:C0} extra earned budget back");
+        if (_futureAmount > 0m) parts.Add($"{_futureAmount:C0} went to future you");
+        if (parts.Count == 0) parts.Add($"Budget {b.SpendBudget:C0} · spent {b.Spent:C0}");
+        return string.Join(" · ", parts) + ".";
+    }
+}

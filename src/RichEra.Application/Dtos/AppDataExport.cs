@@ -33,4 +33,10 @@ public sealed class AppDatabaseSection
 
     // App-level knobs (budget overrides etc.). Same additive rule as ItemImages.
     public List<Setting> Settings { get; set; } = new();
+
+    // Saved-cart bundles + net-worth weigh-ins (phase 4). Additive: backups written before
+    // these fields deserialize to empty lists and still restore cleanly.
+    public List<Bundle> Bundles { get; set; } = new();
+    public List<BundleLine> BundleLines { get; set; } = new();
+    public List<BalanceSnapshot> BalanceSnapshots { get; set; } = new();
 }

@@ -287,6 +287,18 @@
 .m-future { background: var(--m-future); }
 .m-none   { background: var(--m-none); }
 
+/* ---- Money grades (A–D chips on items) ---- */
+.grade {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 7px;
+    font-size: 12px; font-weight: 800; flex: 0 0 auto;
+}
+.grade--a { background: var(--accent-soft); color: var(--accent-ink); }
+.grade--b { background: var(--blue-soft);   color: var(--blue-ink); }
+.grade--c { background: var(--amber-soft);  color: var(--amber-ink); }
+.grade--d { background: var(--rose-soft);   color: var(--rose-ink); }
+.grade--sm { width: 16px; height: 16px; font-size: 9.5px; border-radius: 5px; }
+
 /* ============================================================
    PAGE TRANSITION — replays on each route change (MainLayout restarts
    the animation class on #app-content via window.n2fPageFade).

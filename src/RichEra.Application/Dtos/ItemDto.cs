@@ -31,6 +31,16 @@ public record ItemDto(
     public bool HasSchedule => Frequency is not null && StartDate is not null;
 }
 
+// Usage facts derived from an item's logged transactions — the "History" block of its
+// Money Facts label, plus the raw material for autofill-from-history in the editor.
+public record ItemStatsDto(
+    int TimesLogged,
+    decimal LifetimeTotal,               // Σ row amounts (rows are totals, not per-serving)
+    DateOnly? FirstLogged,
+    DateOnly? LastLogged,
+    decimal? TypicalAmount,              // median per-serving amount of the recent logs
+    RepeatFrequency? GuessedFrequency);  // cadence inferred from recent log gaps, if any
+
 public record ItemUpsertDto(
     Guid? Id,
     string Name,

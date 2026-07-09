@@ -1,0 +1,216 @@
+@page "/library"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject IItemService ItemSvc
+@inject ITransactionService TxnSvc
+@inject IIncomeProjectionService Projection
+@inject NavigationManager Nav
+
+<PageTitle>Library</PageTitle>
+
+@* The "My Foods" of money: every reusable item, sorted by recency, one tap from logging.
+   The PayDay shop stays alive as this page's storefront (same items, pay-flow mood);
+   the recurring hub (/income) stays as the schedule view of the same rows. *@
+
+<div class="pg-head">
+    <h1 class="pg-title">Library</h1>
+    <div class="head-actions">
+        <a class="app-icon-btn" href="/shop" title="Storefront" aria-label="Open the pay shop"><Icon Name="shopping-cart" /></a>
+        <ThemeToggle />
+    </div>
+</div>
+
+<div class="search">
+    <span class="search-ic"><Icon Name="search" Size="16" /></span>
+    <input class="search-input" type="text" placeholder="Search your money items…"
+           value="@_search" @oninput="e => _search = e.Value?.ToString() ?? string.Empty" />
+    @if (!string.IsNullOrWhiteSpace(_search))
+    {
+        <button class="search-clear" @onclick='() => _search = string.Empty' aria-label="Clear search"><Icon Name="x" Size="16" /></button>
+    }
+</div>
+
+<div class="libtabs" role="tablist">
+    <button class="libtab @(_filter == Filter.All ? "on" : "")" @onclick="() => _filter = Filter.All">All</button>
+    <button class="libtab @(_filter == Filter.Out ? "on" : "")" @onclick="() => _filter = Filter.Out">Money out</button>
+    <button class="libtab @(_filter == Filter.In ? "on" : "")" @onclick="() => _filter = Filter.In">Money in</button>
+</div>
+
+@if (_loading)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else
+{
+    var rows = Filtered.ToList();
+
+    <div class="eyebrow">
+        <span>@(_filter == Filter.In ? "Income items" : "Items")</span>
+        <span class="eyebrow__link" @onclick='() => Nav.NavigateTo("/income")'>Recurring hub ›</span>
+    </div>
+
+    @if (rows.Count == 0)
+    {
+        <div class="lib-empty">
+            <div class="le-t">@(_items.Count == 0 ? "No items yet." : "Nothing matches.")</div>
+            <div class="le-s">An item is anything you pay or get paid more than once — Netflix, rent,
+                gas, your paycheck. Save it once, log it in one tap forever.</div>
+        </div>
+    }
+    else
+    {
+        <div class="lib-list">
+            @foreach (var it in rows)
+            {
+                <div class="lrow" @onclick="() => OpenItem(it)">
+                    <div class="tile @TileFor(it)"><Icon Name="@IconFor(it)" /></div>
+                    <div class="mid">
+                        <div class="name">
+                            @it.Name
+                            @if (GradeUi.For(it) is { } g)
+                            {
+                                <span class="grade grade--sm @g.Css" title="@g.Label">@g.Letter</span>
+                            }
+                        </div>
+                        <div class="sub">@SubFor(it)</div>
+                    </div>
+                    @if (_justLogged == it.Id)
+                    {
+                        <span class="logged-flash"><Icon Name="check" Size="15" /> Logged</span>
+                    }
+                    else
+                    {
+                        <button class="qlog" title="@($"Log 1 {it.UnitName ?? "serving"} · {SignedAmount(it)}")"
+                                aria-label="@($"Quick log {it.Name}")"
+                                @onclick="() => QuickLog(it)" @onclick:stopPropagation="true">
+                            <Icon Name="plus" StrokeWidth="2.4" />
+                        </button>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <button class="lib-add" type="button" @onclick='() => Nav.NavigateTo("/library/new")'>
+        <Icon Name="plus" Size="16" /> New item
+    </button>
+}
+
+@code {
+    private enum Filter { All, Out, In }
+
+    private bool _loading = true;
+    private string _search = string.Empty;
+    private Filter _filter = Filter.All;
+    private IReadOnlyList<ItemDto> _items = Array.Empty<ItemDto>();
+    private IReadOnlyDictionary<Guid, DateOnly> _lastLogged = new Dictionary<Guid, DateOnly>();
+    private readonly Dictionary<Guid, DateOnly> _nextDue = new();
+    private Guid? _justLogged;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _items = await ItemSvc.ListAsync();
+        _lastLogged = await ItemSvc.GetLastLoggedAsync();
+
+        // Next occurrence per scheduled item (same per-item lookup the shop uses).
+        foreach (var it in _items.Where(i => i.HasSchedule))
+        {
+            if (await Projection.GetNextOccurrenceAsync(it.Id) is { } due)
+                _nextDue[it.Id] = due;
+        }
+
+        _loading = false;
+    }
+
+    private IEnumerable<ItemDto> Filtered
+    {
+        get
+        {
+            IEnumerable<ItemDto> q = _filter switch
+            {
+                Filter.Out => _items.Where(i => i.Direction == TransactionDirection.Expense),
+                Filter.In => _items.Where(i => i.Direction == TransactionDirection.Income),
+                _ => _items,
+            };
+            if (!string.IsNullOrWhiteSpace(_search))
+            {
+                var tokens = _search.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                q = q.Where(i => tokens.All(tk =>
+                    i.Name.Contains(tk, StringComparison.OrdinalIgnoreCase) ||
+                    (i.Counterparty ?? "").Contains(tk, StringComparison.OrdinalIgnoreCase) ||
+                    (i.CategoryName ?? "").Contains(tk, StringComparison.OrdinalIgnoreCase)));
+            }
+            // Recency first (the My Foods sort), then due-soonest, then name.
+            return q
+                .OrderByDescending(i => _lastLogged.TryGetValue(i.Id, out var d) ? d : DateOnly.MinValue)
+                .ThenBy(i => _nextDue.TryGetValue(i.Id, out var due) ? due : DateOnly.MaxValue)
+                .ThenBy(i => i.Name);
+        }
+    }
+
+    private void OpenItem(ItemDto it) => Nav.NavigateTo($"/library/item/{it.Id}");
+
+    // One tap = one serving logged today, against the item's own account/category.
+    private async Task QuickLog(ItemDto it)
+    {
+        await TxnSvc.UpsertAsync(new TransactionUpsertDto(
+            null, DateOnly.FromDateTime(DateTime.Today), it.AccountId, it.CategoryId,
+            it.Amount, it.Direction, it.Name, it.Id, 1m));
+
+        _lastLogged = new Dictionary<Guid, DateOnly>(_lastLogged)
+        {
+            [it.Id] = DateOnly.FromDateTime(DateTime.Today)
+        };
+
+        _justLogged = it.Id;
+        StateHasChanged();
+        await Task.Delay(1500);
+        if (_justLogged == it.Id)
+        {
+            _justLogged = null;
+            StateHasChanged();
+        }
+    }
+
+    private string SubFor(ItemDto it)
+    {
+        var unit = it.UnitName is null ? SignedAmount(it) : $"{SignedAmount(it)} per {it.UnitName}";
+        var when =
+            _nextDue.TryGetValue(it.Id, out var due) ? DueLabel(due)
+            : _lastLogged.TryGetValue(it.Id, out var last) ? $"last {last:MMM d}"
+            : null;
+        var extra = it.Frequency?.ToString().ToLowerInvariant();
+        return string.Join(" · ", new[] { unit, extra, when }.Where(s => !string.IsNullOrEmpty(s)));
+    }
+
+    private static string DueLabel(DateOnly due)
+    {
+        var days = due.DayNumber - DateOnly.FromDateTime(DateTime.Today).DayNumber;
+        return days <= 0 ? "due today" : days == 1 ? "due tomorrow" : $"due in {days} days";
+    }
+
+    private static string SignedAmount(ItemDto it) =>
+        (it.Direction == TransactionDirection.Income ? "+" : "") + it.Amount.ToString("C");
+
+    private static string IconFor(ItemDto it) =>
+        !string.IsNullOrWhiteSpace(it.Icon) ? it.Icon!
+        : it.Direction == TransactionDirection.Income ? (it.HasSchedule ? "briefcase" : "banknote")
+        : it.Bucket switch
+        {
+            MacroBucket.Debt => "credit-card",
+            MacroBucket.Future => "trending-up",
+            _ => "receipt",
+        };
+
+    private static string TileFor(ItemDto it) =>
+        it.Direction == TransactionDirection.Income ? "tile--green"
+        : it.Bucket switch
+        {
+            MacroBucket.Needs => "tile--blue",
+            MacroBucket.Wants => "tile--amber",
+            MacroBucket.Debt => "tile--rose",
+            MacroBucket.Future => "tile--green",
+            _ => "tile--slate",
+        };
+}

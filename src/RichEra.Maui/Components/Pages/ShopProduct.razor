@@ -96,6 +96,10 @@ else
 
     <button class="bigbuy" @onclick="OrderNow" disabled="@(!CanFund)">Order now</button>
     <button class="bigbuy alt" @onclick="AddToCart" disabled="@(!CanFund)">@(InCart ? "Update cart" : "Add to cart")</button>
+    @if (_kind == ShopItemKind.Expense)
+    {
+        <button class="bigbuy alt" @onclick='() => Nav.NavigateTo($"/library/item/{Id}")'>View Money Facts</button>
+    }
 
     <button class="paysite" disabled>Pay on its site — coming soon</button>
 }

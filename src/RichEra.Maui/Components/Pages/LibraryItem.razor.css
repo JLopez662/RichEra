@@ -1,0 +1,99 @@
+.loading { color: var(--text-muted); }
+
+/* ===== HEADER ===== */
+.d-head { display: flex; align-items: center; gap: 12px; margin: 14px 2px 14px; }
+.d-ic { width: 52px; height: 52px; border-radius: 16px; }
+.d-name { flex: 1; min-width: 0; }
+.d-name .t { font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--text); }
+.d-name .b { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 1px; }
+
+/* ===== MONEY FACTS LABEL =====
+   The FDA-label skeleton in Aurora clothes: heavy title, thick rules, hairline dividers,
+   a right-aligned "% of budget" column. Row indents mark sub-facts of the row above. */
+.facts {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); padding: 15px 16px 12px;
+    box-shadow: 0 1px 0 var(--inner-top) inset, var(--shadow-sm);
+}
+.facts-h {
+    font-size: 21px; font-weight: 900; letter-spacing: -0.01em; color: var(--text);
+    display: flex; justify-content: space-between; align-items: center;
+}
+.facts-h .edit { font-size: 12.5px; font-weight: 700; color: var(--accent-ink); text-decoration: none; }
+.f-serving { display: flex; justify-content: space-between; font-size: 13px; font-weight: 650; color: var(--text-muted); padding: 7px 0 9px; }
+.f-serving b { color: var(--text); font-weight: 750; }
+
+.rule-xl { height: 5px; background: var(--border-strong); border-radius: 2px; }
+.rule-md { height: 2.5px; background: var(--border-strong); border-radius: 2px; }
+.rule-sm { height: 1px; background: var(--border); margin-top: 4px; }
+
+.f-impact { padding: 9px 0 10px; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.f-impact .k { font-size: 11.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+.f-impact .v { font-size: 30px; font-weight: 850; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.f-impact .v.out { color: var(--rose-ink); }
+.f-impact .v.in { color: var(--accent-ink); }
+
+.f-colhead { display: flex; justify-content: flex-end; font-size: 10px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); padding: 6px 0 3px; }
+
+.frow { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; font-size: 13.5px; border-top: 1px solid var(--border); }
+.frow:first-of-type { border-top: none; }
+.frow .k { flex: 1; min-width: 0; font-weight: 750; color: var(--text); }
+.frow .k small { display: block; font-size: 10.5px; font-weight: 600; color: var(--text-faint); margin-top: 1px; }
+.frow.ind .k { padding-left: 14px; font-weight: 600; color: var(--text-muted); }
+.frow .v { font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.frow .v.bad { color: var(--rose-ink); }
+.frow .v.good { color: var(--accent-ink); }
+.frow .v.plan { display: inline-flex; align-items: center; gap: 8px; }
+.frow .pct { width: 52px; text-align: right; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.frow .pct.warn { color: var(--rose-ink); }
+.frow .pct.mut { color: var(--text-faint); font-weight: 650; }
+
+.f-sect { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text-faint); padding: 11px 0 4px; }
+
+.planbar { display: inline-block; width: 64px; height: 6px; border-radius: 99px; background: var(--track); overflow: hidden; vertical-align: middle; }
+.planbar span { display: block; height: 100%; background: var(--grad); border-radius: 99px; }
+
+.f-note { font-size: 11px; color: var(--text-faint); line-height: 1.55; padding-top: 9px; margin: 0; }
+
+/* ===== OPTIONS ===== */
+.opts {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-sm);
+    margin-bottom: 90px;   /* clear the pinned log bar */
+}
+.optrow {
+    width: 100%; display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border: 0; border-bottom: 1px solid var(--border);
+    background: transparent; color: var(--text); font-size: 13.5px; font-weight: 650;
+    cursor: pointer; text-align: left;
+}
+.optrow:last-child { border-bottom: none; }
+.optrow:hover { background: var(--surface-3); }
+.optrow svg { color: var(--text-muted); }
+.optrow .arr { margin-left: auto; color: var(--text-faint); }
+.optrow.danger { color: var(--rose-ink); }
+.optrow.danger svg { color: var(--rose-ink); }
+
+/* ===== LOG BAR (pinned above the tab bar) ===== */
+.logbar {
+    position: fixed; left: 14px; right: 14px; bottom: 86px; z-index: 55;
+    display: flex; align-items: center; gap: 8px;
+    background: var(--nav-bg); border: 1px solid var(--border); border-radius: 22px;
+    padding: 9px 10px; backdrop-filter: blur(10px);
+    box-shadow: 0 1px 0 var(--inner-top) inset, 0 18px 34px -18px rgba(0, 0, 0, .55);
+}
+.logbar .qbtn {
+    width: 34px; height: 34px; border-radius: 12px; flex: 0 0 auto;
+    border: 1px solid var(--border); background: var(--field-bg); color: var(--text);
+    font-size: 17px; font-weight: 800; cursor: pointer; line-height: 1;
+}
+.logbar .qbtn:disabled { opacity: .4; cursor: default; }
+.logbar .qty { min-width: 22px; text-align: center; font-size: 16px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.logbar .unit { font-size: 12.5px; font-weight: 700; color: var(--text-muted); white-space: nowrap; }
+.logbar .go {
+    flex: 1; min-width: 0; text-align: center; padding: 11px 8px; border: 0; border-radius: 15px;
+    background: var(--grad); color: #06281f; font-size: 13.5px; font-weight: 800; cursor: pointer;
+    box-shadow: 0 10px 22px -10px var(--grad-shadow); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-variant-numeric: tabular-nums;
+}
+.logbar .go.ok { background: var(--accent-soft); color: var(--accent-ink); box-shadow: none; }

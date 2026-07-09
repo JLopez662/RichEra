@@ -177,6 +177,7 @@
             var s = await ItemSvc.GetAsync(id);
             if (s is not null)
             {
+                _existing = s;
                 _model = new EditModel
                 {
                     Name = s.Name,
@@ -242,6 +243,9 @@
 
     private async Task Save()
     {
+        // This editor only speaks name/amount/schedule/savings. Everything the Library editor
+        // owns — icon, counterparty, serving, bucket, micros — passes through untouched, or an
+        // edit here would silently wipe the item's Money Facts.
         var dto = new ItemUpsertDto(
             Id,
             _model.Name.Trim(),
@@ -251,8 +255,19 @@
             DateOnly.FromDateTime(_model.StartDate),
             _model.AccountId,
             _model.CategoryId == Guid.Empty ? null : _model.CategoryId,
-            null,
-            IsExpense ? 0 : _model.SavingsPercent);
+            _existing?.Icon,
+            IsExpense ? 0 : _model.SavingsPercent,
+            _existing?.Counterparty,
+            _existing?.UnitName,
+            _existing?.Bucket,
+            _existing?.AprPct,
+            _existing?.Interest ?? InterestModel.None,
+            _existing?.PrincipalBalance,
+            _existing?.PlanPaymentsTotal,
+            _existing?.PlanPaymentsMade,
+            _existing?.ExpectedReturnPct,
+            _existing?.FeesPerUnit,
+            _existing?.IsTaxDeductible ?? false);
         var saved = await ItemSvc.UpsertAsync(dto);
         Nav.NavigateTo($"/income/{saved.Id}/ledger");
     }
@@ -265,6 +280,9 @@
         while (d.DayOfWeek != day) d = d.AddDays(1);
         return d;
     }
+
+    // Loaded item, kept so Save can pass through the fields this editor doesn't surface.
+    private ItemDto? _existing;
 
     private class EditModel
     {

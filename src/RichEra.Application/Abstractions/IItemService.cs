@@ -11,4 +11,10 @@ public interface IItemService
     Task<ItemDto?> GetAsync(Guid id, CancellationToken ct = default);
     Task<ItemDto> UpsertAsync(ItemUpsertDto dto, CancellationToken ct = default);
     Task ArchiveAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Usage facts from the item's logged transactions (history block + autofill).</summary>
+    Task<ItemStatsDto> GetStatsAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>Most recent log date per item, in one query — recency sort for the Library.</summary>
+    Task<IReadOnlyDictionary<Guid, DateOnly>> GetLastLoggedAsync(CancellationToken ct = default);
 }

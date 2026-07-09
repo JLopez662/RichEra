@@ -132,6 +132,9 @@ public class TransactionService : ITransactionService
             entity.Amount = dto.Amount;
             entity.Direction = dto.Direction;
             entity.Note = dto.Note;
+            // Item linkage is deliberately NOT editable here (recurrence/quick-log flows own it);
+            // quantity follows the edit so a corrected row keeps its serving count honest.
+            entity.Quantity = dto.Quantity > 0m ? dto.Quantity : entity.Quantity;
         }
         else
         {
@@ -143,6 +146,8 @@ public class TransactionService : ITransactionService
                 Amount = dto.Amount,
                 Direction = dto.Direction,
                 Note = dto.Note,
+                ItemId = dto.ItemId,
+                Quantity = dto.Quantity > 0m ? dto.Quantity : 1m,
             };
             _db.Transactions.Add(entity);
         }

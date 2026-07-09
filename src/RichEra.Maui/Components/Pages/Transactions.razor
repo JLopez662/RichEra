@@ -870,6 +870,7 @@ else
             Amount = t.Amount,
             Direction = t.Direction,
             Note = t.Note,
+            Quantity = t.Quantity,   // carried through so saving doesn't reset the serving count
         };
     }
 
@@ -901,7 +902,8 @@ else
             _editing.CategoryId,
             _editing.Amount,
             _editing.Direction,
-            _editing.Note));
+            _editing.Note,
+            Quantity: _editing.Quantity));
         CloseSheets();
         await Reload();
     }
@@ -1140,6 +1142,7 @@ else
         public decimal Amount { get; set; }
         public TransactionDirection Direction { get; set; }
         public string? Note { get; set; }
+        public decimal Quantity { get; set; } = 1m;   // not shown in the sheet; preserved round-trip
     }
 
     private class TransferModel

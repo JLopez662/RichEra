@@ -30,9 +30,9 @@
     </div>
 
     <div class="bottom-tabs__group">
-        <button class="bottom-tab @(IsPaychecks ? "is-active" : "")" type="button" @onclick="GoPaychecks">
-            <span class="bottom-tab__ico"><Icon Name="repeat" /></span>
-            <span class="bottom-tab__lbl">Paychecks</span>
+        <button class="bottom-tab @(IsLibrary ? "is-active" : "")" type="button" @onclick="GoLibrary">
+            <span class="bottom-tab__ico"><Icon Name="grid" /></span>
+            <span class="bottom-tab__lbl">Library</span>
         </button>
         <button class="bottom-tab @(IsAccounts ? "is-active" : "")" type="button" @onclick="GoAccounts">
             <span class="bottom-tab__ico"><Icon Name="wallet" /></span>
@@ -168,15 +168,18 @@
 
     private bool IsHome => currentPath == "/";
     private bool IsActivity => currentPath.StartsWith("/transactions", StringComparison.OrdinalIgnoreCase);
-    // "/income" is the recurring-paycheck hub (and its /income/{id}/… detail pages).
-    private bool IsPaychecks => currentPath.StartsWith("/income", StringComparison.OrdinalIgnoreCase);
+    // The Library tab owns the item catalog AND its schedule views (/income/{id}/… pages),
+    // plus the shop — they're the same items wearing different clothes.
+    private bool IsLibrary => currentPath.StartsWith("/library", StringComparison.OrdinalIgnoreCase)
+        || currentPath.StartsWith("/income", StringComparison.OrdinalIgnoreCase)
+        || currentPath.StartsWith("/shop", StringComparison.OrdinalIgnoreCase);
     private bool IsAccounts => currentPath.StartsWith("/accounts", StringComparison.OrdinalIgnoreCase);
 
     // Optimistic-nav: move the highlight to the tapped tab before NavigateTo so
     // the bar feels instant even if the destination takes a moment to render.
     private void GoHome() => GoTo("/");
     private void GoActivity() => GoTo("/transactions");
-    private void GoPaychecks() => GoTo("/income");
+    private void GoLibrary() => GoTo("/library");
     private void GoAccounts() => GoTo("/accounts");
 
     private void GoTo(string path)

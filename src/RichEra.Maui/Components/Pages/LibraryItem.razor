@@ -1,0 +1,373 @@
+@page "/library/item/{Id:guid}"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject IItemService ItemSvc
+@inject ITransactionService TxnSvc
+@inject IBudgetService BudgetSvc
+@inject NavigationManager Nav
+
+<PageTitle>@(_item?.Name ?? "Item")</PageTitle>
+
+@* The Money Facts label — a nutrition label for a dollar. Sections appear only when the
+   item's micros make them meaningful (a coffee has no debt block, a loan no growth block),
+   mirroring how a food label lists n/a vitamins by omission on a phone-sized card. *@
+
+@if (_item is null)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else
+{
+    var it = _item;
+
+    <a class="back-chip" href="/library"><Icon Name="chevron-left" Size="16" /> Library</a>
+
+    <div class="d-head">
+        <div class="tile @TileFor(it) d-ic"><Icon Name="@IconFor(it)" /></div>
+        <div class="d-name">
+            <div class="t">@it.Name</div>
+            <div class="b">@HeaderSub(it)</div>
+        </div>
+        @if (GradeUi.For(it) is { } g)
+        {
+            <span class="grade @g.Css" title="@g.Label">@g.Letter</span>
+        }
+    </div>
+
+    <div class="facts">
+        <div class="facts-h">Money Facts <a class="edit" href="@($"/library/item/{it.Id}/edit")">Edit</a></div>
+        <div class="f-serving"><span>Serving</span><b>@ServingLabel(it)</b></div>
+        <div class="rule-xl"></div>
+
+        <div class="f-impact">
+            <span class="k">Impact per serving</span>
+            <span class="v @(IsIncome ? "in" : "out")">@((IsIncome ? "+" : "−") + it.Amount.ToString("C"))</span>
+        </div>
+        <div class="rule-md"></div>
+
+        @if (ShowPctColumn)
+        {
+            <div class="f-colhead">% of budget*</div>
+        }
+
+        <div class="frow">
+            <span class="k">@(IsIncome ? "Cash in" : "Cash out")</span>
+            <span class="v">@it.Amount.ToString("C")</span>
+            <span class="pct">@PctOfBudget(it.Amount)</span>
+        </div>
+
+        @if (PerYear(it) is decimal yearly)
+        {
+            <div class="frow ind">
+                <span class="k">Per year, kept @FreqNoun(it)</span>
+                <span class="v">@yearly.ToString("C")</span>
+                <span class="pct mut"></span>
+            </div>
+        }
+
+        @if (InterestSplit(it) is var (intPart, prinPart) && intPart is decimal ip)
+        {
+            <div class="frow ind">
+                <span class="k">Interest — @(it.AprPct!.Value.ToString("0.##"))% APR<small>@InterestModelLabel(it.Interest)</small></span>
+                <span class="v bad">@ip.ToString("C")</span>
+                <span class="pct warn">@PctOfBudget(ip)</span>
+            </div>
+            @if (prinPart is decimal pp)
+            {
+                <div class="frow ind">
+                    <span class="k">Principal</span>
+                    <span class="v">@pp.ToString("C")</span>
+                    <span class="pct mut">@PctOfBudget(pp)</span>
+                </div>
+            }
+        }
+
+        @if (it.FeesPerUnit is decimal fees && fees > 0m)
+        {
+            <div class="frow ind"><span class="k">Fees</span><span class="v">@fees.ToString("C")</span><span class="pct mut"></span></div>
+        }
+        @if (it.IsTaxDeductible)
+        {
+            <div class="frow ind"><span class="k">Tax deductible</span><span class="v">Yes</span><span class="pct mut"></span></div>
+        }
+
+        @if (it.PrincipalBalance is decimal principal && principal > 0m)
+        {
+            <div class="f-sect">Debt facts</div>
+            <div class="frow"><span class="k">Balance remaining</span><span class="v bad">@principal.ToString("C")</span><span class="pct mut"></span></div>
+            @if (it is { PlanPaymentsMade: int made, PlanPaymentsTotal: int total } && total > 0)
+            {
+                <div class="frow">
+                    <span class="k">Payment plan<small>@made of @total</small></span>
+                    <span class="v plan"><span class="planbar"><span style="width:@PlanPct(made, total)%"></span></span>@PlanPct(made, total)%</span>
+                    <span class="pct mut"></span>
+                </div>
+            }
+            @if (_payoff is { } payoff)
+            {
+                <div class="frow"><span class="k">Payoff, at this payment</span><span class="v">@payoff.When.ToString("MMM yyyy")</span><span class="pct mut"></span></div>
+                <div class="frow"><span class="k">Interest to payoff</span><span class="v bad">@payoff.TotalInterest.ToString("C0")</span><span class="pct mut"></span></div>
+            }
+            else if (it.AprPct is > 0m && !IsIncome)
+            {
+                <div class="frow"><span class="k">Payoff</span><span class="v bad">never — payment ≤ interest</span><span class="pct mut"></span></div>
+            }
+        }
+
+        @if (it.ExpectedReturnPct is decimal roi && roi > 0m)
+        {
+            <div class="f-sect">Growth facts</div>
+            <div class="frow"><span class="k">Expected return<small>compounded yearly — an estimate</small></span><span class="v">@roi.ToString("0.##")%/yr</span><span class="pct mut"></span></div>
+            <div class="frow ind"><span class="k">One serving in 1 yr</span><span class="v">@Fv(it.Amount, roi, 1).ToString("C0")</span><span class="pct mut"></span></div>
+            <div class="frow ind"><span class="k">In 5 yrs</span><span class="v">@Fv(it.Amount, roi, 5).ToString("C0")</span><span class="pct mut"></span></div>
+            <div class="frow ind"><span class="k">In 10 yrs</span><span class="v">@Fv(it.Amount, roi, 10).ToString("C0")</span><span class="pct mut"></span></div>
+            <div class="frow ind"><span class="k">In 30 yrs</span><span class="v good">@Fv(it.Amount, roi, 30).ToString("C0")</span><span class="pct mut"></span></div>
+        }
+
+        @if (_stats is { TimesLogged: > 0 } st)
+        {
+            <div class="f-sect">History</div>
+            @if (st.FirstLogged is DateOnly first)
+            {
+                <div class="frow"><span class="k">Since</span><span class="v">@first.ToString("MMM yyyy")</span><span class="pct mut"></span></div>
+            }
+            <div class="frow">
+                <span class="k">Lifetime @(IsIncome ? "received" : "spent")</span>
+                <span class="v @(IsIncome ? "good" : "bad")">@st.LifetimeTotal.ToString("C0")</span>
+                <span class="pct mut"></span>
+            </div>
+            <div class="frow"><span class="k">Times logged</span><span class="v">@st.TimesLogged</span><span class="pct mut"></span></div>
+        }
+
+        @if (_hourly > 0m)
+        {
+            <div class="f-sect">Your time</div>
+            @if (!IsIncome)
+            {
+                <div class="frow">
+                    <span class="k">Time cost per serving<small>at ≈@_hourly.ToString("C0")/hr from your planned income</small></span>
+                    <span class="v">@Hours(it.Amount) hrs</span>
+                    <span class="pct mut"></span>
+                </div>
+            }
+            @if (it.ExpectedReturnPct is decimal roi2 && roi2 > 0m)
+            {
+                <div class="frow">
+                    <span class="k">Hours it buys future-you<small>30-yr value ÷ your rate</small></span>
+                    <span class="v good">≈@Hours(Fv(it.Amount, roi2, 30)) hrs</span>
+                    <span class="pct mut"></span>
+                </div>
+            }
+        }
+
+        <div class="rule-sm"></div>
+        <p class="f-note">@FootNote()</p>
+    </div>
+
+    <div class="eyebrow"><span>Options</span></div>
+    <div class="opts">
+        @if (!IsIncome)
+        {
+            <button class="optrow" @onclick='() => Nav.NavigateTo($"/shop/item/expense/{it.Id}")'>
+                <Icon Name="shopping-cart" Size="16" /> Pay it in the shop <span class="arr">›</span>
+            </button>
+        }
+        @if (it.HasSchedule)
+        {
+            <button class="optrow" @onclick='() => Nav.NavigateTo($"/income/{it.Id}/ledger")'>
+                <Icon Name="repeat" Size="16" /> Repeats @it.Frequency!.Value.ToString().ToLowerInvariant() · ledger &amp; forecast <span class="arr">›</span>
+            </button>
+        }
+        <button class="optrow danger" @onclick="ArchiveAsync">
+            <Icon Name="archive" Size="16" /> Archive item
+        </button>
+    </div>
+
+    <div class="logbar">
+        <button class="qbtn" @onclick="() => BumpQty(-1)" aria-label="One serving less" disabled="@(_qty <= 1)">−</button>
+        <span class="qty">@_qty</span>
+        <button class="qbtn" @onclick="() => BumpQty(1)" aria-label="One serving more">＋</button>
+        <span class="unit">@(it.UnitName ?? "serving")@(_qty == 1 ? "" : "s")</span>
+        <button class="go @(_justLogged ? "ok" : "")" @onclick="LogAsync" disabled="@_justLogged">
+            @(_justLogged ? "Logged ✓" : $"Log {(IsIncome ? "+" : "−")}{(it.Amount * _qty).ToString("C")}")
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private ItemDto? _item;
+    private ItemStatsDto? _stats;
+    private BudgetDto? _budget;
+    private (DateOnly When, decimal TotalInterest)? _payoff;
+    private decimal _hourly;
+    private int _qty = 1;
+    private bool _justLogged;
+
+    private bool IsIncome => _item?.Direction == TransactionDirection.Income;
+    private bool ShowPctColumn => !IsIncome && _budget is { SpendBudget: > 0m };
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _item = await ItemSvc.GetAsync(Id);
+        if (_item is null) return;
+
+        _stats = await ItemSvc.GetStatsAsync(Id);
+        var now = DateTime.Now;
+        _budget = await BudgetSvc.GetBudgetAsync(now.Year, now.Month);
+
+        // Take-home hourly rate, derived — not asked for: planned monthly income over the
+        // standard 173.3 working hours (40 h × 52 wk ÷ 12 mo). The whole app's thesis in
+        // one divisor: every label prices things in hours of your life.
+        _hourly = _budget.PlannedIncome > 0m ? Math.Round(_budget.PlannedIncome / 173.33m, 2) : 0m;
+
+        _payoff = PayoffEstimate(_item);
+        _qty = 1;
+        _justLogged = false;
+    }
+
+    private void BumpQty(int delta) => _qty = Math.Clamp(_qty + delta, 1, 99);
+
+    private async Task LogAsync()
+    {
+        if (_item is null || _justLogged) return;
+        var it = _item;
+        await TxnSvc.UpsertAsync(new TransactionUpsertDto(
+            null, DateOnly.FromDateTime(DateTime.Today), it.AccountId, it.CategoryId,
+            it.Amount * _qty, it.Direction, it.Name, it.Id, _qty));
+        _stats = await ItemSvc.GetStatsAsync(Id);   // history block updates in place
+        _justLogged = true;
+        StateHasChanged();
+        await Task.Delay(1500);
+        _justLogged = false;
+        _qty = 1;
+    }
+
+    private async Task ArchiveAsync()
+    {
+        if (_item is null) return;
+        await ItemSvc.ArchiveAsync(_item.Id);
+        Nav.NavigateTo("/library");
+    }
+
+    // ===== Label math =====
+
+    private string PctOfBudget(decimal amount)
+    {
+        if (!ShowPctColumn) return "";
+        var pct = amount / _budget!.SpendBudget * 100m;
+        return pct >= 100m ? ">100%" : $"{pct:0.#}%";
+    }
+
+    private static decimal? PerYear(ItemDto it) => it.Frequency switch
+    {
+        RepeatFrequency.Weekly => it.Amount * 52m,
+        RepeatFrequency.Biweekly => it.Amount * 26m,
+        RepeatFrequency.Monthly => it.Amount * 12m,
+        _ => null,
+    };
+
+    // Split one payment into ≈interest vs principal from the APR + balance micros. A monthly
+    // simple division regardless of compounding model — close enough for a label, and honest
+    // about it in the footnote.
+    private (decimal? Interest, decimal? Principal) InterestSplit(ItemDto it)
+    {
+        if (IsIncome || it.AprPct is not decimal apr || apr <= 0m || it.PrincipalBalance is not decimal p || p <= 0m)
+            return (null, null);
+        var interest = Math.Round(p * apr / 100m / 12m, 2);
+        var principal = it.Amount - interest;
+        return (interest, principal > 0m ? principal : null);
+    }
+
+    // Standard amortization: n = −ln(1 − r·P/A) / ln(1+r). Null when the payment can't
+    // outrun the interest (the label then says so in words).
+    private (DateOnly When, decimal TotalInterest)? PayoffEstimate(ItemDto it)
+    {
+        if (IsIncome || it.PrincipalBalance is not decimal p || p <= 0m ||
+            it.AprPct is not decimal apr || apr <= 0m || it.Amount <= 0m)
+            return null;
+        var r = (double)(apr / 100m / 12m);
+        var ratio = 1 - r * (double)p / (double)it.Amount;
+        if (ratio <= 0) return null;
+        var n = (int)Math.Ceiling(-Math.Log(ratio) / Math.Log(1 + r));
+        if (n <= 0 || n > 1200) return null;
+        var total = Math.Max(0m, Math.Round(n * it.Amount - p, 0));
+        return (DateOnly.FromDateTime(DateTime.Today).AddMonths(n), total);
+    }
+
+    private static decimal Fv(decimal amount, decimal roiPct, int years) =>
+        Math.Round(amount * (decimal)Math.Pow(1 + (double)(roiPct / 100m), years), 0);
+
+    private string Hours(decimal amount) => (_hourly > 0m ? amount / _hourly : 0m).ToString("0.#");
+
+    private static int PlanPct(int made, int total) =>
+        (int)Math.Round(Math.Clamp((double)made / total * 100.0, 0, 100));
+
+    // ===== Label text =====
+
+    private string HeaderSub(ItemDto it)
+    {
+        var bucket = it.Bucket switch
+        {
+            MacroBucket.Needs => "Needs", MacroBucket.Wants => "Wants",
+            MacroBucket.Debt => "Debt", MacroBucket.Future => "Future you", _ => null,
+        };
+        return string.Join(" · ", new[] { it.Counterparty, bucket ?? (IsIncome ? "Money in" : null), it.CategoryName }
+            .Where(s => !string.IsNullOrEmpty(s)));
+    }
+
+    private static string ServingLabel(ItemDto it)
+    {
+        var unit = $"1 {it.UnitName ?? "serving"}";
+        return it.Frequency is RepeatFrequency f ? $"{unit} · {f.ToString().ToLowerInvariant()}" : unit;
+    }
+
+    private string FreqNoun(ItemDto it) => it.Frequency switch
+    {
+        RepeatFrequency.Weekly => "weekly",
+        RepeatFrequency.Biweekly => "biweekly",
+        _ => "monthly",
+    };
+
+    private static string InterestModelLabel(InterestModel m) => m switch
+    {
+        InterestModel.Simple => "simple interest",
+        InterestModel.CompoundDaily => "compounds daily",
+        InterestModel.CompoundMonthly => "compounds monthly",
+        InterestModel.CompoundAnnually => "compounds yearly",
+        _ => "monthly estimate",
+    };
+
+    private string FootNote()
+    {
+        var parts = new List<string>();
+        if (ShowPctColumn) parts.Add($"*Of your {_budget!.SpendBudget:C0} {DateTime.Now:MMMM} spend budget.");
+        if (_item?.AprPct is > 0m || _item?.ExpectedReturnPct is > 0m)
+            parts.Add("Interest splits and projections are estimates from this item's micros, not advice.");
+        if (parts.Count == 0) parts.Add("Add micros in Edit — APR, balance, expected return — and this label grows the matching sections.");
+        return string.Join(" ", parts);
+    }
+
+    private static string IconFor(ItemDto it) =>
+        !string.IsNullOrWhiteSpace(it.Icon) ? it.Icon!
+        : it.Direction == TransactionDirection.Income ? (it.HasSchedule ? "briefcase" : "banknote")
+        : it.Bucket switch
+        {
+            MacroBucket.Debt => "credit-card",
+            MacroBucket.Future => "trending-up",
+            _ => "receipt",
+        };
+
+    private static string TileFor(ItemDto it) =>
+        it.Direction == TransactionDirection.Income ? "tile--green"
+        : it.Bucket switch
+        {
+            MacroBucket.Needs => "tile--blue",
+            MacroBucket.Wants => "tile--amber",
+            MacroBucket.Debt => "tile--rose",
+            MacroBucket.Future => "tile--green",
+            _ => "tile--slate",
+        };
+}

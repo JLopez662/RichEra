@@ -85,6 +85,55 @@ public class ItemService : IItemService
         await _db.SaveChangesAsync(ct);
     }
 
+    public async Task<ItemStatsDto> GetStatsAsync(Guid id, CancellationToken ct = default)
+    {
+        var rows = await _db.Transactions.AsNoTracking()
+            .Where(t => t.ItemId == id)
+            .OrderBy(t => t.Date)
+            .Select(t => new { t.Date, t.Amount, t.Quantity })
+            .ToListAsync(ct);
+        if (rows.Count == 0)
+            return new ItemStatsDto(0, 0m, null, null, null, null);
+
+        // Typical per-serving amount: median of the recent logs, normalized by quantity so a
+        // "2 × tank" fill-up doesn't read as one huge tank.
+        var perServing = rows.TakeLast(6)
+            .Select(r => r.Quantity > 0m ? r.Amount / r.Quantity : r.Amount)
+            .OrderBy(v => v)
+            .ToList();
+        var typical = Math.Round(perServing[perServing.Count / 2], 2);
+
+        // Cadence guess: median gap between recent distinct log dates. Distinct guards against
+        // same-day double logs collapsing the gap to zero.
+        RepeatFrequency? guess = null;
+        var recentDates = rows.Select(r => r.Date).Distinct().TakeLast(6).ToList();
+        if (recentDates.Count >= 3)
+        {
+            var gaps = recentDates.Zip(recentDates.Skip(1), (a, b) => b.DayNumber - a.DayNumber)
+                .OrderBy(g => g)
+                .ToList();
+            guess = gaps[gaps.Count / 2] switch
+            {
+                >= 5 and <= 9 => RepeatFrequency.Weekly,
+                >= 11 and <= 17 => RepeatFrequency.Biweekly,
+                >= 25 and <= 35 => RepeatFrequency.Monthly,
+                _ => null,
+            };
+        }
+
+        return new ItemStatsDto(rows.Count, rows.Sum(r => r.Amount), rows[0].Date, rows[^1].Date, typical, guess);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, DateOnly>> GetLastLoggedAsync(CancellationToken ct = default)
+    {
+        var rows = await _db.Transactions.AsNoTracking()
+            .Where(t => t.ItemId != null)
+            .GroupBy(t => t.ItemId!.Value)
+            .Select(g => new { g.Key, Last = g.Max(t => t.Date) })
+            .ToListAsync(ct);
+        return rows.ToDictionary(r => r.Key, r => r.Last);
+    }
+
     private static string? NullIfBlank(string? s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
     private static ItemDto ToDto(Item s) => new(

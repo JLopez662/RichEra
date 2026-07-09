@@ -29,7 +29,10 @@ public record TransactionUpsertDto(
     Guid? CategoryId,
     decimal Amount,
     TransactionDirection Direction,
-    string? Note);
+    string? Note,
+    Guid? ItemId = null,      // links the row to a library item (quick-log). Applied on create
+                              // only — edits never re-link or unlink; recurrence flows own that.
+    decimal Quantity = 1m);   // servings this row represents; Amount stays the row TOTAL
 
 public record TransferUpsertDto(
     DateOnly Date,

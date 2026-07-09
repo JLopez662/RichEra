@@ -15,13 +15,18 @@
 
 <div class="shop-bar">
     <span class="logo">Pay<b>Day</b></span>
-    <button class="cart-btn" @onclick='() => Nav.NavigateTo("/shop/cart")' aria-label="Cart">
-        <Icon Name="shopping-cart" />
-        @if (Cart.Count > 0)
-        {
-            <span class="badge">@Cart.Count</span>
-        }
-    </button>
+    <span style="display:flex;gap:9px;align-items:center">
+        <a class="cart-btn" href="/library" aria-label="Library list" title="Library list">
+            <Icon Name="grid" />
+        </a>
+        <button class="cart-btn" @onclick='() => Nav.NavigateTo("/shop/cart")' aria-label="Cart">
+            <Icon Name="shopping-cart" />
+            @if (Cart.Count > 0)
+            {
+                <span class="badge">@Cart.Count</span>
+            }
+        </button>
+    </span>
 </div>
 
 <p class="lede">Knock out your bills, cards, and savings like a shopping run. Ordering is a simulation — once you've actually paid, hit “Payment made” to log it.</p>

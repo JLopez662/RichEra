@@ -13,6 +13,10 @@ public class Transaction
     public decimal Amount { get; set; }
     public TransactionDirection Direction { get; set; }
 
+    // User-given name for the row ("Weekly groceries", "Netflix"). The primary display label
+    // for manual transactions. Null for older/imported rows, which fall back to item/category.
+    public string? Name { get; set; }
+
     public string? Note { get; set; }
     public DateTime CreatedUtc { get; set; } = DateTime.UtcNow;
 

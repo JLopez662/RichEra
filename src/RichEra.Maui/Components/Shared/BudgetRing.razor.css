@@ -11,3 +11,8 @@
 .center .big { font-weight: 800; letter-spacing: -0.02em; color: var(--text); font-variant-numeric: tabular-nums; }
 .center .big.neg { color: var(--rose-ink); }
 .center .sml { font-weight: 650; color: var(--text-muted); margin-top: 2px; white-space: nowrap; }
+
+/* Tappable center (Log page: shows the live balance and opens the balance editor). */
+.center.editable { cursor: pointer; }
+.center .edit-hint { display: flex; margin-top: 3px; color: var(--text-faint); opacity: 0.85; }
+.center.editable:hover .edit-hint { color: var(--accent-ink); }

@@ -1,0 +1,164 @@
+/* One feed post. The reel is always dark (it frames video either way); everything around it
+   follows the Aurora/Midnight tokens. */
+
+.fp {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg, 22px);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+/* ---------- header ---------- */
+.fp__top { display: flex; align-items: center; gap: 9px; padding: 10px 11px 9px; }
+
+.fp__av {
+    width: 32px; height: 32px; border-radius: 50%; flex: none;
+    display: grid; place-items: center;
+    color: #fff; font-weight: 800; font-size: 13px;
+}
+
+.fp__id { flex: 1; min-width: 0; }
+.fp__name {
+    font-size: 12.5px; font-weight: 800; letter-spacing: -0.01em; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fp__sub { font-size: 10.5px; font-weight: 600; color: var(--text-faint); }
+
+.fp__more {
+    flex: none; width: 28px; height: 28px; border-radius: 9px;
+    display: grid; place-items: center;
+    background: transparent; border: 0; color: var(--text-faint); cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+.fp__more svg { width: 16px; height: 16px; }
+
+/* ---------- the reel ----------
+   9:16, but capped: a full-height short would push the post's own header and actions off the
+   screen, and then it stops reading as a post in a feed. */
+.fp__reel {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 9 / 16;
+    max-height: 66vh;
+    max-height: 66svh;
+    background: #05070c;
+    overflow: hidden;
+}
+.fp__reel.is-live { background: #000; }
+
+.fp__poster {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    padding: 0; margin: 0; border: 0;
+    background: #05070c;
+    display: block; cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+/* Cover, so the 4:3 fallback thumbnail fills the card instead of floating in letterbox bars. */
+.fp__poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* Enough shade under the play button and the badge for both to hold on a bright frame. */
+.fp__veil {
+    position: absolute; inset: 0; pointer-events: none;
+    background:
+        radial-gradient(60% 40% at 50% 50%, rgba(0, 0, 0, 0.32), transparent 70%),
+        linear-gradient(180deg, rgba(0, 0, 0, 0.30), transparent 26%);
+}
+
+.fp__play {
+    position: absolute; inset: 0; margin: auto;
+    width: 58px; height: 58px; border-radius: 50%;
+    display: grid; place-items: center;
+    color: #fff;
+    background: rgba(0, 0, 0, 0.42);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.30);
+    /* the triangle sits visually left of centre at its own bounding box */
+    padding-left: 4px;
+    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fp__play svg { width: 24px; height: 24px; }
+.fp__poster:active .fp__play { transform: scale(0.93); }
+
+.fp__badge {
+    position: absolute; top: 11px; left: 11px;
+    padding: 3px 8px; border-radius: 999px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 9px; font-weight: 700; letter-spacing: 0.16em;
+}
+
+/* Shown instead of the play button when YouTube wouldn't play this one here. */
+.fp__warn {
+    position: absolute; inset: 0; margin: auto;
+    width: 52px; height: 52px; border-radius: 50%;
+    display: grid; place-items: center;
+    background: rgba(0, 0, 0, 0.46);
+    color: #fbbf24;
+    box-shadow: inset 0 0 0 1px rgba(251, 191, 36, 0.4);
+}
+.fp__warn svg { width: 24px; height: 24px; }
+
+.fp__blocked {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    padding: 14px 14px 15px;
+    text-align: left;
+    background: linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.86) 42%);
+    color: #fff;
+}
+.fp__blocked b { display: block; font-size: 13px; font-weight: 800; margin-bottom: 2px; }
+.fp__blocked span { font-size: 11px; line-height: 1.35; color: rgba(255, 255, 255, 0.72); }
+
+.fp__player { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+
+/* ---------- actions ---------- */
+.fp__acts { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px 4px; }
+.fp__acts-l { display: flex; align-items: center; gap: 4px; }
+
+.fp__act {
+    width: 32px; height: 32px; border-radius: 10px;
+    display: grid; place-items: center;
+    background: transparent; border: 0; cursor: pointer;
+    color: var(--text-muted);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 90ms ease, color 140ms ease;
+}
+.fp__act svg { width: 19px; height: 19px; }
+.fp__act:active { transform: scale(0.9); }
+.fp__act.is-on { color: var(--accent-ink); }
+.fp__act.is-yt { color: #ff3040; }
+
+/* ---------- why it's here, caption, footer ---------- */
+.fp__why {
+    display: flex; align-items: center; gap: 5px;
+    padding: 2px 12px 0;
+    font-size: 10.5px; font-weight: 700; color: var(--text-faint);
+}
+.fp__why svg { width: 11px; height: 11px; flex: none; }
+.fp__why span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp__why-tag { color: var(--accent-ink); }
+
+.fp__cap { padding: 4px 12px 0; font-size: 12.5px; line-height: 1.4; color: var(--text); }
+.fp__cap b { font-weight: 800; }
+
+.fp__foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 12px 11px; }
+.fp__time { font-size: 10.5px; font-weight: 600; color: var(--text-faint); }
+
+/* Not decoration: a video whose owner disabled embedding shows YouTube's error inside the
+   iframe, and this is the way out of it. */
+.fp__ext {
+    flex: none;
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 0;
+    background: none; border: 0; cursor: pointer;
+    color: var(--text-muted);
+    font-size: 10.5px; font-weight: 700;
+    -webkit-tap-highlight-color: transparent;
+}
+.fp__ext svg { width: 11px; height: 11px; }
+
+@media (prefers-reduced-motion: reduce) {
+    .fp__play, .fp__act { transition: none; }
+}

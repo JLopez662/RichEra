@@ -15,6 +15,10 @@ public interface ITransactionService
     // Distinct (year, month) pairs that contain at least one transaction — lets the month picker
     // mark which months actually have data. Ordered oldest first.
     Task<IReadOnlyList<(int Year, int Month)>> GetActiveMonthsAsync(CancellationToken ct = default);
+
+    // True if a manual log (not a transfer leg, not an import) exists on the given date. Drives the
+    // "smart" daily reminder — it skips days you've already tracked something.
+    Task<bool> HasManualLogOnAsync(DateOnly date, CancellationToken ct = default);
     Task<TransactionDto?> GetAsync(Guid id, CancellationToken ct = default);
     Task<TransactionDto> UpsertAsync(TransactionUpsertDto dto, CancellationToken ct = default);
     Task CreateTransferAsync(TransferUpsertDto dto, CancellationToken ct = default);

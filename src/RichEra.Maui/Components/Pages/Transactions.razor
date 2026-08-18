@@ -7,6 +7,7 @@
 @inject ICategoryService CategorySvc
 @inject IItemService ItemSvc
 @inject IBudgetService BudgetSvc
+@inject INotificationScheduler NotificationScheduler
 @inject NavigationManager Nav
 
 <PageTitle>Log</PageTitle>
@@ -14,6 +15,7 @@
 <div class="pg-head">
     <h1 class="pg-title">Log</h1>
     <div class="head-actions">
+        <NotificationBell />
         <ThemeToggle />
     </div>
 </div>
@@ -56,7 +58,11 @@
             </div>
             <div class="bh-mid">
                 <div class="bh-stat"><div class="k">Money out</div><div class="v">@b.Spent.ToString("C0")</div></div>
-                <BudgetRing Budget="b" Size="148" />
+                <BudgetRing Budget="b" Size="148"
+                            CenterBig='@CurrentBalance.ToString("C")'
+                            CenterSub="@BalanceRingSub(b)"
+                            CenterNegative="@(CurrentBalance < 0m)"
+                            OnCenterClick="OpenBalanceSheet" />
                 <div class="bh-stat"><div class="k">Money in</div><div class="v in">@b.MoneyIn.ToString("C0")</div></div>
             </div>
             @if (b.Macros.Count > 0)
@@ -110,80 +116,100 @@ else
 
 @if (_editing is not null)
 {
-    <div class="sheet">
-        <div class="grip"></div>
-
-        <div class="seg">
-            <button class="@(_editing.Direction == TransactionDirection.Expense ? "active exp" : "")"
-                    @onclick="() => SetDirection(TransactionDirection.Expense)">Expense</button>
-            <button class="@(_editing.Direction == TransactionDirection.Income ? "active inc" : "")"
-                    @onclick="() => SetDirection(TransactionDirection.Income)">Income</button>
+    <div class="txn-form">
+        <div class="txn-head">
+            <button class="txn-back" @onclick="CloseSheets" aria-label="Cancel"><Icon Name="chevron-left" Size="22" /></button>
+            <span class="txn-title">@(_editing.Id is null ? "New Transaction" : "Edit Transaction")</span>
+            <button class="txn-save" @onclick="Save">Save</button>
         </div>
 
-        <div class="amount-field @(_editing.Direction == TransactionDirection.Expense ? "exp" : "inc")">
-            <label class="lbl">Amount</label>
-            <div class="amount-row">
-                <span class="cur">$</span>
-                <input type="number" step="0.01" min="0" class="amount-input" @bind="_editing.Amount" />
-            </div>
-        </div>
-
-        <div class="two-col">
-            <div class="field">
-                <label>Date</label>
-                <input type="date" class="form-control" @bind="_editing.Date" />
-            </div>
-            <div class="field">
-                <label>Account</label>
-                <select class="form-select" @bind="_editing.AccountId">
-                    @foreach (var a in _accounts)
-                    {
-                        <option value="@a.Id">@a.Name</option>
-                    }
-                </select>
-            </div>
-        </div>
-
-        <div class="field">
-            <label>Category</label>
-            @{
-                var cats = CategoriesFor(_editing.Direction).ToList();
-            }
-            @if (cats.Count == 0)
-            {
-                <p class="hint">No @(_editing.Direction == TransactionDirection.Income ? "income" : "expense") categories yet. Add some on the Categories page.</p>
-            }
-            else
-            {
-                <div class="cats">
-                    @foreach (var c in cats)
-                    {
-                        <span class="cat @(_editing.CategoryId == c.Id ? "active" : "")" @onclick="() => SelectCategory(c.Id)">
-                            <Icon Name="@CategoryIconName(c)" /> @c.Name
-                        </span>
-                    }
+        <div class="txn-scroll">
+            <div class="card">
+                <div class="seg">
+                    <button class="@(_editing.Direction == TransactionDirection.Expense ? "active exp" : "")"
+                            @onclick="() => SetDirection(TransactionDirection.Expense)">Expense</button>
+                    <button class="@(_editing.Direction == TransactionDirection.Income ? "active inc" : "")"
+                            @onclick="() => SetDirection(TransactionDirection.Income)">Income</button>
                 </div>
+
+                <div class="id-row">
+                    <div class="id-ic"><Icon Name="@EditIconName()" Size="24" /></div>
+                    <div class="id-fields">
+                        <input class="id-name" type="text" placeholder="Transaction name (required)"
+                               @bind="_editing.Name" @bind:event="oninput" />
+                        <input class="id-payee" type="text" placeholder="Payee / merchant (optional)"
+                               @bind="_editing.Note" @bind:event="oninput" />
+                    </div>
+                </div>
+
+                <div class="flabel amt-lbl">Amount</div>
+                <div class="amount-field @(_editing.Direction == TransactionDirection.Expense ? "exp" : "inc")">
+                    <span class="cur">$</span>
+                    <input type="number" step="0.01" min="0" class="amount-input" placeholder="0.00" @bind="_editing.Amount" />
+                </div>
+            </div>
+
+            <div class="txn-section">
+                <div class="st">Details</div>
+                <div class="ss">When it happened and where the money moves</div>
+            </div>
+            <div class="card txn-rows">
+                <div class="txn-row">
+                    <span class="ri"><Icon Name="calendar" Size="18" /></span>
+                    <span class="rk">Date</span>
+                    <input type="date" class="row-ctl" @bind="_editing.Date" />
+                </div>
+                <div class="txn-row">
+                    <span class="ri"><Icon Name="credit-card" Size="18" /></span>
+                    <span class="rk">Account</span>
+                    <select class="row-ctl" @bind="_editing.AccountId">
+                        @foreach (var a in _accounts)
+                        {
+                            <option value="@a.Id">@a.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+
+            <div class="txn-section">
+                <div class="st">Category</div>
+                <div class="ss">Groups this into Needs, Wants, Debt or Future</div>
+            </div>
+            <div class="card">
+                @{
+                    var cats = CategoriesFor(_editing.Direction).ToList();
+                }
+                @if (cats.Count == 0)
+                {
+                    <p class="hint">No @(_editing.Direction == TransactionDirection.Income ? "income" : "expense") categories yet. Add some on the Categories page.</p>
+                }
+                else
+                {
+                    <div class="cats">
+                        @foreach (var c in cats)
+                        {
+                            <span class="cat @(_editing.CategoryId == c.Id ? "active" : "")" @onclick="() => SelectCategory(c.Id)">
+                                <Icon Name="@CategoryIconName(c)" /> @c.Name
+                            </span>
+                        }
+                    </div>
+                }
+            </div>
+
+            @if (_formError is not null)
+            {
+                <p class="form-error">@_formError</p>
             }
-        </div>
 
-        <div class="field">
-            <label>Note</label>
-            <input type="text" class="form-control" @bind="_editing.Note" placeholder="Optional" />
-        </div>
-
-        @if (_formError is not null)
-        {
-            <p class="form-error">@_formError</p>
-        }
-
-        <div class="sheet-actions">
-            <button class="cancel" @onclick="CloseSheets">Cancel</button>
             @if (_editing.Id is not null)
             {
-                <button class="delete" @onclick="() => Delete(_editing.Id!.Value)">Delete</button>
+                <button class="txn-delete" @onclick="() => Delete(_editing.Id!.Value)">Delete transaction</button>
             }
-            <button class="save" @onclick="Save">@(_editing.Id is null ? "Save expense" : "Update")</button>
         </div>
+
+        <button class="txn-fab" type="button" @onclick='() => Nav.NavigateTo("/scan")'>
+            <Icon Name="image" Size="20" /> Scan receipt
+        </button>
     </div>
 }
 
@@ -440,17 +466,61 @@ else
     </div>
 }
 
+@if (_showBalanceSheet)
+{
+    <TotalBalanceSheet Accounts="_accounts" OnClose="CloseBalanceSheet" OnSaved="BalanceSheetSaved" />
+}
+
+@if (_showAddChooser)
+{
+    <div class="add-screen">
+        <div class="add-head">
+            <button class="add-back" @onclick="CloseAddChooser" aria-label="Back"><Icon Name="chevron-left" Size="22" /></button>
+            <div class="add-search">
+                <span class="add-search-ic"><Icon Name="search" Size="16" /></span>
+                <input type="text" placeholder="Search transactions" value="@_addSearch" @oninput="OnAddSearchInput" />
+                @if (!string.IsNullOrEmpty(_addSearch))
+                {
+                    <button class="add-search-clear" @onclick="() => _addSearch = string.Empty" aria-label="Clear search"><Icon Name="x" Size="16" /></button>
+                }
+            </div>
+        </div>
+
+        <div class="add-tabs">
+            <button class="add-tab @(_addTab == AddTab.All ? "active" : "")" @onclick="() => _addTab = AddTab.All">All</button>
+            <button class="add-tab @(_addTab == AddTab.Mine ? "active" : "")" @onclick="() => _addTab = AddTab.Mine">My Transactions</button>
+            <button class="add-tab @(_addTab == AddTab.Recurrence ? "active" : "")" @onclick="() => _addTab = AddTab.Recurrence">Recurrence</button>
+            <button class="add-tab @(_addTab == AddTab.Income ? "active" : "")" @onclick="() => _addTab = AddTab.Income">Income</button>
+        </div>
+
+        <div class="add-body">
+            <div class="add-section">Create</div>
+
+            <button class="add-card" @onclick="ChooseCreateTransaction">
+                <span class="add-card-ic"><Icon Name="plus" Size="22" /></span>
+                <span class="add-card-body">
+                    <span class="t1">Create New Transaction</span>
+                    <span class="t2">Log a one-time expense or income</span>
+                </span>
+                <span class="add-card-chev"><Icon Name="chevron-right" Size="20" /></span>
+            </button>
+
+            <button class="add-card" @onclick="ChooseCreateRecurrence">
+                <span class="add-card-ic"><Icon Name="repeat" Size="22" /></span>
+                <span class="add-card-body">
+                    <span class="t1">Create a Recurrence</span>
+                    <span class="t2">Set up a repeating bill or paycheck</span>
+                </span>
+                <span class="add-card-chev"><Icon Name="chevron-right" Size="20" /></span>
+            </button>
+        </div>
+    </div>
+}
+
 @if (!IsSearching && _mode == LogMode.Day)
 {
     var groups = DayGroups();
-    @if (groups.Count == 0)
-    {
-        <div class="empty-day">
-            <div class="ed-t">Nothing logged @(_day == Today ? "today" : "this day") yet.</div>
-            <div class="ed-s">Money you log lands in its group — Needs, Wants, Debt, Future — and moves the ring.</div>
-        </div>
-    }
-    else
+    @if (groups.Count > 0)
     {
         @foreach (var g in groups)
         {
@@ -486,9 +556,18 @@ else
         }
     }
 
-    <button class="log-add" type="button" @onclick="() => StartNew(TransactionDirection.Expense)">
-        <Icon Name="plus" Size="16" /> Log something
+    <button class="log-add" type="button" @onclick="OpenAddChooser">
+        <span class="log-add-ic"><Icon Name="plus" Size="18" /></span>
+        <span class="log-add-txt">Add Transaction</span>
     </button>
+
+    @if (groups.Count == 0)
+    {
+        <div class="empty-day">
+            <div class="ed-t">No transactions @(_day == Today ? "today" : "this day") yet.</div>
+            <div class="ed-s">Transactions you log land in their group — Needs, Wants, Debt, Future — and move the ring.</div>
+        </div>
+    }
 }
 else if (_transactions.Count == 0)
 {
@@ -554,6 +633,10 @@ else
     private decimal? _budgetInput;
     private string? _budgetError;
 
+    // Editable current balance shown in the ring center — mirrors Home's hero total.
+    private bool _showBalanceSheet;
+    private decimal CurrentBalance => _accounts.Sum(a => a.CurrentBalance);
+
     private string _search = "";
     private const int SearchCap = 300;
     private bool IsSearching => !string.IsNullOrWhiteSpace(_search);
@@ -565,6 +648,13 @@ else
     private IReadOnlyList<CategoryDto> _categories = Array.Empty<CategoryDto>();
     private EditModel? _editing;
     private TransferModel? _transferEditing;
+
+    // The Lose It–style "Add" chooser overlay: a create-first landing that routes into the
+    // one-time transaction sheet or the recurring-rule page.
+    private bool _showAddChooser;
+    private string _addSearch = "";
+    private AddTab _addTab = AddTab.All;
+    private enum AddTab { All, Mine, Recurrence, Income }
     private TransactionDto? _viewing;   // row whose read-only detail modal is open
     private ItemDto? _viewingRule;        // the rule, if the viewed row is recurring
     private bool _recurExpanded;                  // period picker shown (toggled on, not yet created)
@@ -617,6 +707,9 @@ else
 
     private async Task Reload()
     {
+        // Every upsert/delete/transfer adjusts account balances in the DB, so refresh the accounts
+        // here (all mutations call Reload) — keeps the ring-center balance live without a page change.
+        _accounts = await AccountSvc.ListAsync();
         _transactions = IsSearching
             ? await TxnSvc.SearchAsync(_search.Trim(), SearchCap)
             : await TxnSvc.ListAsync(_year, _month);
@@ -787,7 +880,9 @@ else
     // Row title: the logged item's name beats the category (a confirmed paycheck reads
     // "Payroll", not "Salary"); transfers stay "Transfer".
     private static string RowName(TransactionDto t) =>
-        t.TransferGroupId is not null ? "Transfer" : t.ItemName ?? t.CategoryName ?? "Uncategorized";
+        t.TransferGroupId is not null ? "Transfer"
+        : !string.IsNullOrWhiteSpace(t.Name) ? t.Name!
+        : t.ItemName ?? t.CategoryName ?? "Uncategorized";
 
     // "2 × tank" serving chip for item-logged rows; null when there's nothing useful to say.
     private static string? QtyLabel(TransactionDto t)
@@ -832,9 +927,63 @@ else
         await Reload();
     }
 
+    // ===== Current balance (ring center) =====
+    // The ring center shows the live account total; tapping it opens the shared balance editor
+    // (the same one Home uses). SetBalance writes account balances to the DB, so the change is
+    // visible on Home, Accounts, and here alike — one source of truth, no in-memory sync needed.
+
+    private void OpenBalanceSheet()
+    {
+        if (_accounts.Count == 0) return;
+        CloseSheets();
+        _showBalanceSheet = true;
+    }
+
+    private void CloseBalanceSheet() => _showBalanceSheet = false;
+
+    private async Task BalanceSheetSaved()
+    {
+        _showBalanceSheet = false;
+        await Reload();   // Reload refreshes accounts (ring center) + any reconcile adjustments in the log
+    }
+
+    // Compact budget context kept under the balance: per-day safe allowance, or an over-budget flag.
+    private static string BalanceRingSub(BudgetDto b) =>
+        b.Remaining < 0m ? "over budget"
+        : b.DaysLeft > 0 && b.SafePerDay > 0m ? $"≈{b.SafePerDay:C0}/day safe"
+        : "";
+
     private IEnumerable<CategoryDto> CategoriesFor(TransactionDirection dir) =>
         _categories.Where(c => !c.IsArchived &&
             c.Kind == (dir == TransactionDirection.Income ? CategoryKind.Income : CategoryKind.Expense));
+
+    // ===== Add chooser =====
+
+    private void OpenAddChooser()
+    {
+        CloseSheets();
+        _addSearch = "";
+        _addTab = AddTab.All;
+        _showAddChooser = true;
+    }
+
+    private void CloseAddChooser() => _showAddChooser = false;
+
+    private void OnAddSearchInput(ChangeEventArgs e) => _addSearch = e.Value?.ToString() ?? "";
+
+    // "Create New Transaction" → the existing one-time expense/income sheet.
+    private void ChooseCreateTransaction()
+    {
+        _showAddChooser = false;
+        StartNew(TransactionDirection.Expense);
+    }
+
+    // "Create a Recurrence" → the recurring rule editor (handles both bills and paychecks).
+    private void ChooseCreateRecurrence()
+    {
+        _showAddChooser = false;
+        Nav.NavigateTo("/income/new");
+    }
 
     private void StartNew(TransactionDirection dir)
     {
@@ -875,6 +1024,7 @@ else
             CategoryId = t.CategoryId,
             Amount = t.Amount,
             Direction = t.Direction,
+            Name = t.Name,
             Note = t.Note,
             Quantity = t.Quantity,   // carried through so saving doesn't reset the serving count
         };
@@ -896,6 +1046,11 @@ else
     private async Task Save()
     {
         if (_editing is null) return;
+        if (string.IsNullOrWhiteSpace(_editing.Name))
+        {
+            _formError = "Give the transaction a name.";
+            return;
+        }
         if (_editing.Amount <= 0)
         {
             _formError = "Enter an amount greater than 0.";
@@ -909,9 +1064,13 @@ else
             _editing.Amount,
             _editing.Direction,
             _editing.Note,
-            Quantity: _editing.Quantity));
+            Quantity: _editing.Quantity,
+            Name: _editing.Name!.Trim()));
         CloseSheets();
         await Reload();
+
+        // Logging a transaction may skip today's reminder (smart-skip).
+        _ = NotificationScheduler.RescheduleAsync();
     }
 
     private void StartTransfer()
@@ -966,6 +1125,8 @@ else
         _recurExpanded = false;
         _showMonthPicker = false;
         _budgetSheet = false;
+        _showBalanceSheet = false;
+        _showAddChooser = false;
         _budgetError = null;
         _formError = null;
     }
@@ -1139,6 +1300,15 @@ else
         };
     }
 
+    // Icon shown in the edit form's identity tile: reflects the picked category, else a
+    // direction-based fallback (matches the row icon vocabulary).
+    private string EditIconName()
+    {
+        var cat = _editing?.CategoryId is Guid cid ? _categories.FirstOrDefault(c => c.Id == cid) : null;
+        if (cat is not null) return CategoryIconName(cat);
+        return _editing?.Direction == TransactionDirection.Income ? "banknote" : "receipt";
+    }
+
     private class EditModel
     {
         public Guid? Id { get; set; }
@@ -1147,6 +1317,7 @@ else
         public Guid? CategoryId { get; set; }
         public decimal Amount { get; set; }
         public TransactionDirection Direction { get; set; }
+        public string? Name { get; set; }
         public string? Note { get; set; }
         public decimal Quantity { get; set; } = 1m;   // not shown in the sheet; preserved round-trip
     }

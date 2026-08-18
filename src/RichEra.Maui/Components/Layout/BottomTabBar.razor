@@ -76,7 +76,27 @@
             <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
         </button>
 
+        <div class="bottom-sheet__divider">Discover</div>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/feed")'>
+            <span class="tile tile--violet"><Icon Name="film" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Money feed</span>
+                <span class="bottom-sheet__row-sub">Finance Shorts from creators you follow</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
         <div class="bottom-sheet__divider">Manage</div>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/notifications")'>
+            <span class="tile tile--violet"><Icon Name="bell" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Notifications</span>
+                <span class="bottom-sheet__row-sub">Reminders &amp; alerts</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
 
         <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/shop")'>
             <span class="tile tile--amber"><Icon Name="shopping-cart" /></span>
@@ -128,6 +148,15 @@
             <span class="bottom-sheet__row-text">
                 <span class="bottom-sheet__row-lbl">Backup &amp; restore</span>
                 <span class="bottom-sheet__row-sub">Save or load your data</span>
+            </span>
+            <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
+        </button>
+
+        <button class="bottom-sheet__row" type="button" @onclick='() => NavigateAndClose("/settings")'>
+            <span class="tile tile--slate"><Icon Name="sliders" /></span>
+            <span class="bottom-sheet__row-text">
+                <span class="bottom-sheet__row-lbl">Settings</span>
+                <span class="bottom-sheet__row-sub">Reminders &amp; preferences</span>
             </span>
             <span class="bottom-sheet__row-arrow"><Icon Name="chevron-right" /></span>
         </button>

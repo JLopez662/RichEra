@@ -1,0 +1,200 @@
+@page "/settings"
+@using RichEra.Application.Abstractions
+@using RichEra.Maui.Services
+@inject INotificationScheduler Scheduler
+@inject INotificationSoundService Sound
+@inject NavigationManager Nav
+
+<PageTitle>Settings</PageTitle>
+
+<div class="pg-head">
+    <button class="back-chip" type="button" @onclick='() => Nav.NavigateTo("/")'>
+        <Icon Name="chevron-left" Size="15" /> Back
+    </button>
+    <h1 class="pg-title set-title">Settings</h1>
+    <span class="set-spacer"></span>
+</div>
+
+<div class="eyebrow"><span>Daily transaction reminder</span></div>
+<p class="set-lead">A once-a-day nudge to log what you spent — on your phone and here in the Notification Center.</p>
+
+<div class="glass set-group">
+    <div class="set-row">
+        <span class="tile tile--green"><Icon Name="bell" /></span>
+        <div class="set-text">
+            <div class="set-n">Daily reminder</div>
+            <div class="set-s">Notify me to track my transactions</div>
+        </div>
+        <button class="switch @(_enabled ? "is-on" : "")" type="button" role="switch"
+                aria-checked="@(_enabled ? "true" : "false")" aria-label="Daily reminder"
+                @onclick="ToggleEnabled"></button>
+    </div>
+
+    @if (_enabled)
+    {
+        <div class="set-row">
+            <span class="tile tile--blue"><Icon Name="clock" /></span>
+            <div class="set-text">
+                <div class="set-n">Time of day</div>
+                <div class="set-s">When the nudge arrives</div>
+            </div>
+            <input type="time" class="set-time" value="@TimeValue" @onchange="OnTimeChanged" />
+        </div>
+        <div class="set-row">
+            <span class="tile tile--violet"><Icon Name="check" /></span>
+            <div class="set-text">
+                <div class="set-n">Only if I haven't logged</div>
+                <div class="set-s">Skip days you've already tracked something</div>
+            </div>
+            <button class="switch @(_smart ? "is-on" : "")" type="button" role="switch"
+                    aria-checked="@(_smart ? "true" : "false")" aria-label="Smart reminder"
+                    @onclick="ToggleSmart"></button>
+        </div>
+    }
+</div>
+
+<div class="eyebrow"><span>Notification sound</span></div>
+<div class="glass set-group">
+    <div class="set-row @(_soundSupported ? "" : "set-soon")">
+        <span class="tile tile--amber"><Icon Name="bell" /></span>
+        <div class="set-text">
+            <div class="set-n">Custom sound</div>
+            <div class="set-s">@SoundSubtext</div>
+        </div>
+        @if (_soundSupported)
+        {
+            @if (HasCustomSound)
+            {
+                <button class="sound-btn sound-reset" type="button" disabled="@_soundBusy" @onclick="ResetSound">Reset</button>
+            }
+            <button class="sound-btn" type="button" disabled="@_soundBusy" @onclick="PickSound">@(HasCustomSound ? "Change" : "Choose")</button>
+        }
+        else
+        {
+            <span class="pill-soon">Android 10+</span>
+        }
+    </div>
+</div>
+
+<div class="eyebrow"><span>More alerts</span></div>
+<div class="glass set-group">
+    <div class="set-row">
+        <span class="tile tile--amber"><Icon Name="credit-card" /></span>
+        <div class="set-text"><div class="set-n">Bills due</div><div class="set-s">Ahead of recurring payments</div></div>
+        <button class="switch @(_bills ? "is-on" : "")" type="button" role="switch"
+                aria-checked="@(_bills ? "true" : "false")" aria-label="Bills due" @onclick="ToggleBills"></button>
+    </div>
+    <div class="set-row">
+        <span class="tile tile--rose"><Icon Name="alert-triangle" /></span>
+        <div class="set-text"><div class="set-n">Budget alerts</div><div class="set-s">When you near your monthly limit</div></div>
+        <button class="switch @(_budget ? "is-on" : "")" type="button" role="switch"
+                aria-checked="@(_budget ? "true" : "false")" aria-label="Budget alerts" @onclick="ToggleBudget"></button>
+    </div>
+    <div class="set-row">
+        <span class="tile tile--violet"><Icon Name="piggy-bank" /></span>
+        <div class="set-text"><div class="set-n">Savings milestones</div><div class="set-s">When a goal hits a mark</div></div>
+        <button class="switch @(_savings ? "is-on" : "")" type="button" role="switch"
+                aria-checked="@(_savings ? "true" : "false")" aria-label="Savings milestones" @onclick="ToggleSavings"></button>
+    </div>
+    <div class="set-row">
+        <span class="tile tile--blue"><Icon Name="trending-up" /></span>
+        <div class="set-text"><div class="set-n">Weekly check-in</div><div class="set-s">A weekly nudge to review balances</div></div>
+        <button class="switch @(_weigh ? "is-on" : "")" type="button" role="switch"
+                aria-checked="@(_weigh ? "true" : "false")" aria-label="Weekly check-in" @onclick="ToggleWeigh"></button>
+    </div>
+</div>
+
+@code {
+    private bool _enabled;
+    private bool _smart;
+    private TimeOnly _time;
+    private bool _bills;
+    private bool _budget;
+    private bool _savings;
+    private bool _weigh;
+    private bool _soundSupported;
+    private bool _soundBusy;
+    private string _soundName = "";
+
+    protected override void OnInitialized()
+    {
+        _enabled = ReminderPreferences.Enabled;
+        _smart = ReminderPreferences.SmartSkip;
+        _time = ReminderPreferences.Time;
+        _bills = ReminderPreferences.BillsDueEnabled;
+        _budget = ReminderPreferences.BudgetAlertsEnabled;
+        _savings = ReminderPreferences.SavingsMilestonesEnabled;
+        _weigh = ReminderPreferences.WeighInEnabled;
+        _soundSupported = Sound.IsSupported;
+        _soundName = ReminderPreferences.CustomSoundName;
+    }
+
+    private bool HasCustomSound => !string.IsNullOrEmpty(_soundName);
+
+    private string SoundSubtext =>
+        !_soundSupported ? "Set a custom sound on Android 10 or newer"
+        : HasCustomSound ? _soundName
+        : "Default notification sound";
+
+    private async Task PickSound()
+    {
+        if (_soundBusy) return;
+        _soundBusy = true;
+        try
+        {
+            var name = await Sound.PickAsync();
+            if (!string.IsNullOrEmpty(name))
+            {
+                _soundName = name;
+                await Scheduler.RescheduleAsync();
+            }
+        }
+        finally { _soundBusy = false; }
+    }
+
+    private async Task ResetSound()
+    {
+        if (_soundBusy) return;
+        _soundBusy = true;
+        try
+        {
+            await Sound.ClearAsync();
+            _soundName = "";
+            await Scheduler.RescheduleAsync();
+        }
+        finally { _soundBusy = false; }
+    }
+
+    // HTML <input type="time"> expects an invariant 24-hour "HH:mm" value.
+    private string TimeValue => _time.ToString("HH\\:mm", System.Globalization.CultureInfo.InvariantCulture);
+
+    private void ToggleEnabled()
+    {
+        _enabled = !_enabled;
+        ReminderPreferences.Enabled = _enabled;
+        _ = Scheduler.RescheduleAsync();
+    }
+
+    private void ToggleSmart()
+    {
+        _smart = !_smart;
+        ReminderPreferences.SmartSkip = _smart;
+        _ = Scheduler.RescheduleAsync();
+    }
+
+    private void OnTimeChanged(ChangeEventArgs e)
+    {
+        if (TimeOnly.TryParse(e.Value?.ToString(), System.Globalization.CultureInfo.InvariantCulture,
+                              System.Globalization.DateTimeStyles.None, out var t))
+        {
+            _time = t;
+            ReminderPreferences.Time = t;
+            _ = Scheduler.RescheduleAsync();
+        }
+    }
+
+    private void ToggleBills()   { _bills = !_bills;     ReminderPreferences.BillsDueEnabled = _bills;            _ = Scheduler.RescheduleAsync(); }
+    private void ToggleBudget()  { _budget = !_budget;   ReminderPreferences.BudgetAlertsEnabled = _budget;       _ = Scheduler.RescheduleAsync(); }
+    private void ToggleSavings() { _savings = !_savings; ReminderPreferences.SavingsMilestonesEnabled = _savings; _ = Scheduler.RescheduleAsync(); }
+    private void ToggleWeigh()   { _weigh = !_weigh;     ReminderPreferences.WeighInEnabled = _weigh;             _ = Scheduler.RescheduleAsync(); }
+}

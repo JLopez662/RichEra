@@ -26,7 +26,7 @@ public class TransactionService : ITransactionService
             .Select(t => new TransactionDto(
                 t.Id, t.Date, t.AccountId, t.Account!.Name,
                 t.CategoryId, t.Category != null ? t.Category.Name : null,
-                t.Amount, t.Direction, t.Note, t.TransferGroupId,
+                t.Amount, t.Direction, t.Note, t.Name, t.TransferGroupId,
                 t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity,
                 t.Item != null && t.Item.Bucket != null ? t.Item.Bucket
                     : t.Category != null ? t.Category.Bucket : null,
@@ -38,6 +38,10 @@ public class TransactionService : ITransactionService
                         $"account={accountId?.ToString() ?? "all"} -> {result.Count} rows");
         return result;
     }
+
+    public Task<bool> HasManualLogOnAsync(DateOnly date, CancellationToken ct = default)
+        => _db.Transactions.AsNoTracking()
+            .AnyAsync(t => t.Date == date && t.TransferGroupId == null && t.ImportSource == null, ct);
 
     public async Task<IReadOnlyList<TransactionDto>> SearchAsync(string query, int limit = 300, CancellationToken ct = default)
     {
@@ -59,6 +63,7 @@ public class TransactionService : ITransactionService
         {
             var tk = token;
             q = q.Where(t =>
+                (t.Name != null && t.Name.ToLower().Contains(tk)) ||
                 (t.Note != null && t.Note.ToLower().Contains(tk)) ||
                 (t.Category != null && t.Category.Name.ToLower().Contains(tk)) ||
                 t.Account!.Name.ToLower().Contains(tk));
@@ -69,7 +74,7 @@ public class TransactionService : ITransactionService
             .Select(t => new TransactionDto(
                 t.Id, t.Date, t.AccountId, t.Account!.Name,
                 t.CategoryId, t.Category != null ? t.Category.Name : null,
-                t.Amount, t.Direction, t.Note, t.TransferGroupId,
+                t.Amount, t.Direction, t.Note, t.Name, t.TransferGroupId,
                 t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity,
                 t.Item != null && t.Item.Bucket != null ? t.Item.Bucket
                     : t.Category != null ? t.Category.Bucket : null,
@@ -103,7 +108,7 @@ public class TransactionService : ITransactionService
         return t is null ? null : new TransactionDto(
             t.Id, t.Date, t.AccountId, t.Account!.Name,
             t.CategoryId, t.Category?.Name,
-            t.Amount, t.Direction, t.Note, t.TransferGroupId,
+            t.Amount, t.Direction, t.Note, t.Name, t.TransferGroupId,
             t.CreatedUtc, t.ExternalId, t.ImportSource, t.ItemId, t.Quantity,
             t.Item?.Bucket ?? t.Category?.Bucket, t.Item?.Name, t.Item?.UnitName);
     }
@@ -131,6 +136,7 @@ public class TransactionService : ITransactionService
             entity.CategoryId = dto.CategoryId;
             entity.Amount = dto.Amount;
             entity.Direction = dto.Direction;
+            entity.Name = dto.Name;
             entity.Note = dto.Note;
             // Item linkage is deliberately NOT editable here (recurrence/quick-log flows own it);
             // quantity follows the edit so a corrected row keeps its serving count honest.
@@ -145,6 +151,7 @@ public class TransactionService : ITransactionService
                 CategoryId = dto.CategoryId,
                 Amount = dto.Amount,
                 Direction = dto.Direction,
+                Name = dto.Name,
                 Note = dto.Note,
                 ItemId = dto.ItemId,
                 Quantity = dto.Quantity > 0m ? dto.Quantity : 1m,
@@ -181,7 +188,7 @@ public class TransactionService : ITransactionService
         return new TransactionDto(
             loaded.Id, loaded.Date, loaded.AccountId, loaded.Account!.Name,
             loaded.CategoryId, loaded.Category?.Name,
-            loaded.Amount, loaded.Direction, loaded.Note, loaded.TransferGroupId,
+            loaded.Amount, loaded.Direction, loaded.Note, loaded.Name, loaded.TransferGroupId,
             loaded.CreatedUtc, loaded.ExternalId, loaded.ImportSource, loaded.ItemId, loaded.Quantity,
             loaded.Item?.Bucket ?? loaded.Category?.Bucket, loaded.Item?.Name, loaded.Item?.UnitName);
     }
@@ -262,8 +269,10 @@ public class TransactionService : ITransactionService
         if (t.TransferGroupId is not null)
             throw new InvalidOperationException("Transfers can't be made recurring.");
 
-        // Name the rule after the category, falling back to the (trimmed) note, then a generic label.
-        var name = !string.IsNullOrWhiteSpace(t.Category?.Name) ? t.Category!.Name
+        // Name the rule after the transaction's own name, then category, then the (trimmed) note,
+        // then a generic label.
+        var name = !string.IsNullOrWhiteSpace(t.Name) ? Truncate(t.Name!, 60)!
+                 : !string.IsNullOrWhiteSpace(t.Category?.Name) ? t.Category!.Name
                  : !string.IsNullOrWhiteSpace(t.Note) ? Truncate(t.Note!, 60)!
                  : t.Direction == TransactionDirection.Income ? "Recurring income" : "Recurring expense";
 

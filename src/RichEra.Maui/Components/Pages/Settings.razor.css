@@ -1,0 +1,53 @@
+/* Settings — reminder toggles + time picker. Reuses the global .tile / .glass / .eyebrow atoms. */
+
+.set-title { font-size: 20px; }
+.set-spacer { width: 34px; flex: 0 0 auto; }
+.set-lead { font-size: 12.5px; color: var(--text-muted); line-height: 1.55; margin: 0 6px 12px; }
+
+.set-group { padding: 4px 4px; }
+.set-row { display: flex; align-items: center; gap: 12px; padding: 13px 12px; }
+.set-row + .set-row { border-top: 1px solid var(--border); }
+.set-text { flex: 1; min-width: 0; }
+.set-n { font-size: 14px; font-weight: 700; color: var(--text); }
+.set-s { font-size: 11.5px; color: var(--text-faint); font-weight: 600; margin-top: 1px; }
+
+.set-time {
+    font-size: 15px; font-weight: 800; color: var(--text);
+    padding: 7px 12px; border-radius: 12px;
+    background: var(--field-bg); border: 1px solid var(--border);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Toggle switch */
+.switch {
+    width: 46px; height: 27px; flex: 0 0 auto; padding: 0;
+    border-radius: 999px; position: relative; cursor: pointer;
+    background: var(--surface-3); border: 1px solid var(--border);
+    transition: background .16s ease, border-color .16s ease;
+}
+.switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 21px; height: 21px; border-radius: 50%; background: #fff;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, .4); transition: left .16s ease;
+}
+.switch.is-on { background: var(--accent); border-color: var(--accent-line); }
+.switch.is-on::after { left: 21px; }
+
+/* Notification-sound actions */
+.sound-btn {
+    flex: 0 0 auto; padding: 7px 14px; border-radius: 999px;
+    font-size: 12.5px; font-weight: 800; cursor: pointer;
+    background: var(--accent); color: #fff; border: 1px solid var(--accent-line);
+    transition: opacity .16s ease;
+}
+.sound-btn:disabled { opacity: .5; cursor: default; }
+.sound-reset {
+    background: var(--surface-3); color: var(--text-muted); border-color: var(--border);
+}
+
+/* "Coming soon" group */
+.set-soon { opacity: .62; }
+.pill-soon {
+    font-size: 10.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+    background: var(--surface-3); color: var(--text-muted);
+}

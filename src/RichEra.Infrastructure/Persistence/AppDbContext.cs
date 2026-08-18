@@ -18,6 +18,7 @@ public class AppDbContext : DbContext
     public DbSet<Bundle> Bundles => Set<Bundle>();
     public DbSet<BundleLine> BundleLines => Set<BundleLine>();
     public DbSet<BalanceSnapshot> BalanceSnapshots => Set<BalanceSnapshot>();
+    public DbSet<NotificationLogEntry> NotificationLogEntries => Set<NotificationLogEntry>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -47,6 +48,7 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Amount).HasPrecision(18, 4);
             e.Property(x => x.Quantity).HasPrecision(18, 4);
+            e.Property(x => x.Name).HasMaxLength(120);
             e.Property(x => x.Note).HasMaxLength(500);
             e.Property(x => x.ExternalId).HasMaxLength(64);
             e.Property(x => x.ImportSource).HasMaxLength(20);
@@ -138,6 +140,17 @@ public class AppDbContext : DbContext
             e.Property(x => x.ContentType).IsRequired().HasMaxLength(64);
             // One image per item; the lookup is always by (Kind, OwnerId).
             e.HasIndex(x => new { x.Kind, x.OwnerId }).IsUnique();
+        });
+
+        b.Entity<NotificationLogEntry>(e =>
+        {
+            e.HasKey(x => x.Id);
+            e.Property(x => x.Kind).HasConversion<byte>();
+            e.Property(x => x.Title).IsRequired().HasMaxLength(160);
+            e.Property(x => x.Body).HasMaxLength(512);
+            e.Property(x => x.DedupeKey).IsRequired().HasMaxLength(400);
+            e.HasIndex(x => x.DedupeKey).IsUnique();   // idempotent upsert-by-key on reschedule
+            e.HasIndex(x => x.FireTimeUtc);            // ordering, prune, and the unread filter
         });
     }
 }

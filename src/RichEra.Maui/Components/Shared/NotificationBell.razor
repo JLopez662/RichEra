@@ -1,0 +1,39 @@
+@using Microsoft.Extensions.DependencyInjection
+@using RichEra.Application.Abstractions
+@inject IServiceScopeFactory ScopeFactory
+@inject NavigationManager Nav
+
+@* Round header bell + unread badge → opens the Notification Center. Reusable: drop
+   <NotificationBell /> into any page's .head-actions (Home, Log). Shares the global
+   .app-icon-btn look with ThemeToggle; the badge is this component's scoped CSS.
+   Re-reads the count each time its host page mounts, so it refreshes on navigation. *@
+<button class="app-icon-btn nbell @CssClass" type="button"
+        @onclick='() => Nav.NavigateTo("notifications")'
+        title="Notifications" aria-label="@AriaLabel">
+    <Icon Name="bell" />
+    @if (_unread > 0)
+    {
+        <span class="nbell__badge">@(_unread > 9 ? "9+" : _unread.ToString())</span>
+    }
+</button>
+
+@code {
+    /// <summary>Optional extra classes for layout (e.g. "ms-2").</summary>
+    [Parameter] public string? CssClass { get; set; }
+
+    private int _unread;
+    private string AriaLabel => _unread > 0 ? $"Notifications, {_unread} unread" : "Notifications";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Resolve the Center in its OWN DI scope so counting unread never races the host
+        // page's queries on the shared scoped DbContext. Non-critical: a failure shows no badge.
+        try
+        {
+            using var scope = ScopeFactory.CreateScope();
+            var center = scope.ServiceProvider.GetRequiredService<INotificationCenter>();
+            _unread = await center.GetUnreadCountAsync();
+        }
+        catch { _unread = 0; }
+    }
+}

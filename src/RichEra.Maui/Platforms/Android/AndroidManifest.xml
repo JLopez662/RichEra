@@ -5,4 +5,8 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Required by CommunityToolkit FileSaver to write the backup on Android 12L and below. -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <!-- Local notifications: post on Android 13+, re-register after reboot, keep exact fire times. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
 </manifest>

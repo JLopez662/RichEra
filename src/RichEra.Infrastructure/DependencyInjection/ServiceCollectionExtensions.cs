@@ -36,6 +36,12 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IItemImageService, ItemImageService>();
         services.AddScoped<IBundleService, BundleService>();
         services.AddScoped<IBalanceSnapshotService, BalanceSnapshotService>();
+        services.AddScoped<INotificationCenter, NotificationCenter>();
+        services.AddScoped<INotificationRuleEvaluator, NotificationRuleEvaluator>();
+
+        // Receipt scanning: the parser + orchestration are platform-free and live here; the
+        // IReceiptTextRecognizer (on-device OCR) is registered by the MAUI head.
+        services.AddScoped<IReceiptScanService, ReceiptScanService>();
 
         services.AddScoped<IOfxParser, OfxParser>();
         services.AddScoped<IStatementImportService, StatementImportService>();

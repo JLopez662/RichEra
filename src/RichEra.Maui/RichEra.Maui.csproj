@@ -1,7 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk.Razor">
 
     <PropertyGroup>
-        <TargetFrameworks>net9.0-android</TargetFrameworks>
+        <!-- Android is skipped for the local Windows-only inner loop (DevWindowsOnly=true,
+             set in the git-ignored repo-root Directory.Build.props). It still builds on CI
+             and any machine without that file. See Directory.Build.props for the on-demand
+             Android build command. -->
+        <TargetFrameworks Condition="'$(DevWindowsOnly)' != 'true'">net9.0-android</TargetFrameworks>
         <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
         <!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
         <!-- <TargetFrameworks>$(TargetFrameworks);net9.0-tizen</TargetFrameworks> -->
@@ -71,10 +75,13 @@
 
     <ItemGroup>
         <PackageReference Include="CommunityToolkit.Maui" Version="11.2.0" />
+        <PackageReference Include="Plugin.Maui.OCR" Version="1.1.1" />
         <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.0" />
         <PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="$(MauiVersion)" />
         <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.8" />
+        <!-- Local (scheduled) notifications — Android only; the Windows dev loop no-ops the scheduler. -->
+        <PackageReference Include="Plugin.LocalNotification" Version="11.1.4" Condition="$(TargetFramework.Contains('-android'))" />
     </ItemGroup>
 
     <ItemGroup>

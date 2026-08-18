@@ -65,3 +65,7 @@ secrets.json
 
 ## Claude Code local session config (machine-specific permissions)
 .claude/settings.local.json
+
+## Local dev toggle: Windows-only inner loop (skips the android TFM to speed VS load).
+## Machine-specific; CI/other machines build full multi-target without it.
+Directory.Build.props

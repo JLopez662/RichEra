@@ -1,0 +1,445 @@
+@page "/feed"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@inject IShortsFeedService Shorts
+@inject IFeedSourceService Sources
+@inject NavigationManager Nav
+
+<div class="container-fluid py-3 fd-page">
+
+    <div class="fd-head">
+        <div class="fd-headline">
+            <span class="fd-eyebrow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3 17 6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg>
+                MONEY MOVES
+            </span>
+            <h1 class="fd-title">Feed</h1>
+        </div>
+        <div class="fd-head-actions">
+            <button class="fd-ic" type="button" title="Shuffle" aria-label="Shuffle the feed"
+                    disabled="@loading" @onclick="ShuffleAsync">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>
+            </button>
+            <button class="fd-ic is-hot" type="button" title="Sources" aria-label="Manage sources"
+                    @onclick='() => Nav.NavigateTo("/feed/sources")'>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+            </button>
+        </div>
+    </div>
+
+    @* Multi-select: bubbles union, so picking two channels and a search draws from all three.
+       Tapping a selected bubble deselects it; deselecting the last one is the same as "show all".
+       Never disabled mid-fetch — a tap that lands during a load is queued and applied after, so
+       tapping three in a row feels instant instead of eating the second and third. *@
+    @if (channels.Count > 0 || searches.Count > 0)
+    {
+        <div class="fd-rail @(HasSourceSelection ? "is-picking" : null)">
+            <button class="fd-src fd-src--add" type="button" @onclick='() => Nav.NavigateTo("/feed/sources")'>
+                <span class="fd-src__ring"><span class="fd-src__av">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                </span></span>
+                <span class="fd-src__lbl">Add</span>
+            </button>
+
+            @if (savedCount > 0)
+            {
+                @* A different axis from the source bubbles — it narrows to bookmarks AND whatever
+                   sources are picked, rather than replacing the selection. *@
+                <button class="fd-src fd-src--saved @(savedOnly ? "is-on" : null)" type="button"
+                        aria-pressed="@(savedOnly ? "true" : "false")" @onclick="ToggleSavedAsync">
+                    <span class="fd-src__ring"><span class="fd-src__av fd-src__av--saved">
+                        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+                    </span></span>
+                    <span class="fd-src__lbl">Saved · @savedCount</span>
+                </button>
+            }
+
+            @foreach (var channel in channels)
+            {
+                <button class="fd-src @(selectedChannels.Contains(channel.ChannelId) ? "is-on" : null)"
+                        type="button" aria-pressed="@(selectedChannels.Contains(channel.ChannelId) ? "true" : "false")"
+                        @key="channel.ChannelId" @onclick="() => ToggleChannelAsync(channel.ChannelId)">
+                    <span class="fd-src__ring"><span class="fd-src__av" style="background:@GradientFor(channel.Handle, channel.Title)">
+                        @Initial(channel.Title)
+                    </span></span>
+                    <span class="fd-src__lbl">@channel.Title</span>
+                </button>
+            }
+
+            @foreach (var search in searches)
+            {
+                <button class="fd-src @(selectedSearches.Contains(search.Key) ? "is-on" : null)"
+                        type="button" aria-pressed="@(selectedSearches.Contains(search.Key) ? "true" : "false")"
+                        @key="search.Key" @onclick="() => ToggleSearchAsync(search.Key)">
+                    <span class="fd-src__ring"><span class="fd-src__av fd-src__av--search">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.6" y2="16.6"/></svg>
+                    </span></span>
+                    <span class="fd-src__lbl">@search.Query</span>
+                </button>
+            }
+        </div>
+    }
+
+    @if (FilterLabel is { } label)
+    {
+        <div class="fd-filter">
+            <span class="fd-filter__txt">Showing <b>@label</b></span>
+            <button class="fd-filter__clear" type="button" @onclick="ClearFilterAsync">Show all</button>
+        </div>
+    }
+
+    @if (loading && items.Count == 0)
+    {
+        @* Skeleton feed — mirrors the ShortPost card (avatar + name/sub + 9:16 reel)
+           so the first paint has the feed's shape instead of a bare loading bar. *@
+        <div class="fd-skel" role="status" aria-label="Loading the feed" aria-live="polite">
+            @for (var i = 0; i < 2; i++)
+            {
+                <article class="fd-skel-card" aria-hidden="true">
+                    <div class="fd-skel-card__top">
+                        <span class="fd-sk fd-sk--av"></span>
+                        <div class="fd-skel-card__id">
+                            <span class="fd-sk fd-sk--name"></span>
+                            <span class="fd-sk fd-sk--sub"></span>
+                        </div>
+                    </div>
+                    <span class="fd-sk fd-sk--reel"></span>
+                </article>
+            }
+        </div>
+    }
+    else if (items.Count == 0)
+    {
+        <div class="fd-empty">
+            <span class="fd-empty__badge">
+                <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M23 12s0-3.9-.5-5.8a3 3 0 0 0-2.1-2.1C18.5 3.6 12 3.6 12 3.6s-6.5 0-8.4.5A3 3 0 0 0 1.5 6.2C1 8.1 1 12 1 12s0 3.9.5 5.8a3 3 0 0 0 2.1 2.1c1.9.5 8.4.5 8.4.5s6.5 0 8.4-.5a3 3 0 0 0 2.1-2.1C23 15.9 23 12 23 12zM9.8 15.6V8.4l6.3 3.6z"/></svg>
+            </span>
+            <div class="fd-empty__ttl">@EmptyTitle</div>
+            <div class="fd-empty__sub">@EmptyBlurb</div>
+            @if (HasFilter)
+            {
+                <button class="fd-empty__cta" type="button" @onclick="ClearFilterAsync">Show all sources</button>
+            }
+            else
+            {
+                <button class="fd-empty__cta" type="button" @onclick='() => Nav.NavigateTo("/feed/sources")'>
+                    @(AllMuted ? "Manage sources" : "Add a source")
+                </button>
+            }
+        </div>
+    }
+    else
+    {
+        @foreach (var card in items)
+        {
+            <ShortPost Card="card" @key="card.VideoId"
+                       Playing="@(playing == card.VideoId)"
+                       OnPlay="OnPlay"
+                       OnToggleSave="ToggleSaveAsync"
+                       OnHide="HideAsync" />
+        }
+
+        @if (exhausted)
+        {
+            <div class="fd-end">
+                That's everything @(HasFilter ? "this selection" : "your sources") has right now.
+                <button class="fd-end__link" type="button" @onclick="ShuffleAsync">Start over</button>
+            </div>
+        }
+        else
+        {
+            <button class="fd-more" type="button" disabled="@loading" @onclick="LoadMoreAsync">
+                @(loading ? "Loading…" : "Load more")
+            </button>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>Posts per batch. Small enough that a cold start only waits on a few posters.</summary>
+    private const int BatchSize = 6;
+
+    private readonly List<ShortCard> items = new();
+    private IReadOnlyList<FollowedChannel> channels = Array.Empty<FollowedChannel>();
+    private IReadOnlyList<SavedSearch> searches = Array.Empty<SavedSearch>();
+
+    /// <summary>Drives the spinner. Starts true so the first paint is the loading bar, not an
+    /// "empty feed" flash while OnInitializedAsync is still running.</summary>
+    private bool loading = true;
+
+    /// <summary>Re-entrancy latch — a double-tap on "Load more" must not fire two overlapping
+    /// draws that then both append.</summary>
+    private bool inFlight;
+
+    /// <summary>Set when a rail tap lands while a fetch is running. Whoever owns the current
+    /// fetch drains it when it finishes, so a fast three-tap selection ends on the right result
+    /// instead of dropping the taps that arrived mid-flight.</summary>
+    private bool reloadQueued;
+
+    private bool exhausted;
+    private int savedCount;
+
+    /// <summary>Channels + searches including muted ones, so an all-muted feed reads differently
+    /// from one with nothing configured.</summary>
+    private int totalSources;
+
+    /// <summary>The one short allowed to hold a player, so two never play over each other.</summary>
+    private string? playing;
+
+    // Selected sources. Empty means "everything" — there's no separate all-selected state, so
+    // deselecting the last bubble lands back on the unfiltered feed without a special case.
+    private readonly HashSet<string> selectedChannels = new(StringComparer.Ordinal);
+    private readonly HashSet<string> selectedSearches = new(StringComparer.Ordinal);
+
+    /// <summary>Narrows to bookmarks. A separate axis from the source bubbles: the two AND
+    /// together, so "saved, from these two channels" is expressible.</summary>
+    private bool savedOnly;
+
+    private bool HasSourceSelection => selectedChannels.Count > 0 || selectedSearches.Count > 0;
+    private bool HasFilter => savedOnly || HasSourceSelection;
+
+    /// <summary>
+    /// Snapshotted, not the live sets: a tap can mutate the selection while a fetch is in flight,
+    /// and the fetch should finish against the selection it started with. The queued reload then
+    /// re-runs against the new one.
+    /// </summary>
+    private FeedFilter? CurrentFilter =>
+        HasSourceSelection
+            ? new FeedFilter
+            {
+                ChannelIds = new HashSet<string>(selectedChannels, StringComparer.Ordinal),
+                SearchKeys = new HashSet<string>(selectedSearches, StringComparer.Ordinal),
+            }
+            : null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Sequential, not Task.WhenAll: these all funnel into the one gated Preferences store,
+        // and there's nothing to gain from queueing on it two deep.
+        var allChannels = await Sources.GetChannelsAsync();
+        var allSearches = await Sources.GetSearchesAsync();
+        savedCount = (await Sources.GetSavedAsync()).Count;
+
+        // The rail only offers sources that are actually feeding the pool — a muted one would be
+        // a bubble that filters to nothing. The total is kept so the empty state can tell
+        // "you have no sources" apart from "you switched them all off".
+        totalSources = allChannels.Count + allSearches.Count;
+        channels = allChannels.Where(c => c.Enabled).ToList();
+        searches = allSearches.Where(s => s.Enabled).ToList();
+
+        await LoadMoreAsync();
+    }
+
+    // ---------------------------------------------------------------- fetching
+
+    /// <summary>One batch, appended. Saved mode is finite and ordered, so it's shown whole.</summary>
+    private async Task FetchAsync()
+    {
+        try
+        {
+            if (savedOnly)
+            {
+                items.Clear();
+                items.AddRange(await Shorts.GetSavedShortsAsync(CurrentFilter));
+                exhausted = true;
+            }
+            else
+            {
+                var shown = items.Select(i => i.VideoId).ToHashSet();
+                var batch = await Shorts.GetShortsAsync(BatchSize, shown, CurrentFilter);
+                items.AddRange(batch);
+
+                // Fewer than asked for means the pool is dry — say so instead of leaving a
+                // "Load more" button that will never add anything.
+                exhausted = batch.Count < BatchSize;
+            }
+        }
+        catch (Exception)
+        {
+            // A source that can't be reached already degrades to its cache inside the service;
+            // anything that still escapes shouldn't blank the page the user is looking at.
+            exhausted = true;
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        if (inFlight) return;
+
+        inFlight = true;
+        loading = true;
+        StateHasChanged();
+        try { await FetchAsync(); }
+        finally
+        {
+            inFlight = false;
+            loading = false;
+        }
+
+        // A filter tap that arrived mid-fetch is honoured now rather than silently dropped.
+        if (reloadQueued) await ReloadAsync();
+        else StateHasChanged();
+    }
+
+    /// <summary>
+    /// Throws away the current list and draws again — used by shuffle and by every filter change.
+    /// Loops while taps keep arriving so the last tap always wins, and only one fetch runs at a
+    /// time no matter how fast the rail is tapped.
+    /// </summary>
+    private async Task ReloadAsync()
+    {
+        if (inFlight) { reloadQueued = true; return; }
+
+        inFlight = true;
+        try
+        {
+            do
+            {
+                reloadQueued = false;
+                loading = true;
+                items.Clear();
+                playing = null;
+                exhausted = false;
+                StateHasChanged();
+
+                await FetchAsync();
+            }
+            while (reloadQueued);
+        }
+        finally
+        {
+            inFlight = false;
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private Task ShuffleAsync() => ReloadAsync();
+
+    // ---------------------------------------------------------------- post actions
+
+    private void OnPlay(string videoId) => playing = videoId;
+
+    private async Task ToggleSaveAsync(string videoId)
+    {
+        var nowSaved = await Sources.ToggleSavedAsync(videoId);
+        savedCount += nowSaved ? 1 : -1;
+
+        // Patch the card in place rather than reloading: a reload would reshuffle the feed out
+        // from under the post that was just tapped.
+        var index = items.FindIndex(i => i.VideoId == videoId);
+        if (index >= 0) items[index] = items[index] with { Saved = nowSaved };
+
+        // Un-saving inside the Saved filter should remove it from the list it no longer belongs to.
+        if (savedOnly && !nowSaved) items.RemoveAll(i => i.VideoId == videoId);
+    }
+
+    private async Task HideAsync(string videoId)
+    {
+        var wasSaved = items.FirstOrDefault(i => i.VideoId == videoId)?.Saved == true;
+        await Sources.HideAsync(videoId);
+        if (wasSaved) savedCount = Math.Max(0, savedCount - 1);
+
+        if (playing == videoId) playing = null;
+        items.RemoveAll(i => i.VideoId == videoId);
+
+        // Hiding the last post shouldn't strand the viewer on an empty page when the pool has more.
+        if (items.Count == 0 && !exhausted) await LoadMoreAsync();
+    }
+
+    // ---------------------------------------------------------------- filtering
+
+    private async Task ToggleChannelAsync(string channelId)
+    {
+        if (!selectedChannels.Remove(channelId)) selectedChannels.Add(channelId);
+        await ReloadAsync();
+    }
+
+    private async Task ToggleSearchAsync(string key)
+    {
+        if (!selectedSearches.Remove(key)) selectedSearches.Add(key);
+        await ReloadAsync();
+    }
+
+    private async Task ToggleSavedAsync()
+    {
+        savedOnly = !savedOnly;
+        await ReloadAsync();
+    }
+
+    private async Task ClearFilterAsync()
+    {
+        selectedChannels.Clear();
+        selectedSearches.Clear();
+        savedOnly = false;
+        await ReloadAsync();
+    }
+
+    /// <summary>
+    /// "saved", a single source by name, or "N sources" — and the two axes joined when both are
+    /// on, so the banner always accounts for everything that's narrowing the list.
+    /// </summary>
+    private string? FilterLabel
+    {
+        get
+        {
+            var parts = new List<string>(2);
+            if (savedOnly) parts.Add("saved");
+
+            var picked = selectedChannels.Count + selectedSearches.Count;
+            if (picked == 1)
+            {
+                var channel = channels.FirstOrDefault(c => selectedChannels.Contains(c.ChannelId));
+                var search = searches.FirstOrDefault(s => selectedSearches.Contains(s.Key));
+
+                if (channel is not null) parts.Add(channel.Title);
+                else if (search is not null) parts.Add($"“{search.Query}”");
+                else parts.Add("1 source");
+            }
+            else if (picked > 1)
+            {
+                parts.Add($"{picked} sources");
+            }
+
+            return parts.Count == 0 ? null : string.Join(" · ", parts);
+        }
+    }
+
+    /// <summary>Every source exists but is switched off — a different problem from having none,
+    /// and it has a different fix.</summary>
+    private bool AllMuted => totalSources > 0 && channels.Count == 0 && searches.Count == 0;
+
+    private string EmptyTitle => savedOnly && !HasSourceSelection ? "Nothing saved yet"
+        : HasFilter ? "Nothing in this selection"
+        : totalSources == 0 ? "No sources yet"
+        : AllMuted ? "Every source is switched off"
+        : "Nothing to show";
+
+    private string EmptyBlurb => savedOnly && !HasSourceSelection
+        ? "Tap the bookmark on a short and it lands here."
+        : HasFilter
+            ? SelectionBlurb
+            : totalSources == 0
+                ? "Follow a YouTube channel or save a search and its Shorts land here. Paste a handle, a channel link, or even a link to one short — we'll find the channel."
+                : AllMuted
+                    ? $"All {totalSources} of your sources are muted. Switch one back on and its Shorts return — nothing was lost."
+                    : "Your sources came back empty. If you're offline, this fills back in once you're connected.";
+
+    private string SelectionBlurb => savedOnly
+        ? "Nothing you've saved came from the sources you picked. Widen the selection, or switch Saved off."
+        : "Nothing we can reach from what you picked — those sources may only post long-form video, or you may be offline.";
+
+    private static string Initial(string title) =>
+        string.IsNullOrWhiteSpace(title) ? "?" : title.Trim()[..1].ToUpperInvariant();
+
+    /// <summary>Same hash as ShortPost's avatar, so a channel's bubble and its posts match.</summary>
+    private static string GradientFor(string handle, string title)
+    {
+        var palette = new[] { "#ff3040", "#f59e0b", "#10b981", "#6366f1", "#06b6d4", "#d946ef" };
+        var key = string.IsNullOrWhiteSpace(handle) ? title : handle;
+        var hash = 0;
+        foreach (var ch in key) hash = unchecked(hash * 31 + ch);
+        // Masked rather than Math.Abs: int.MinValue has no positive counterpart and would throw.
+        return $"linear-gradient(150deg, {palette[(hash & 0x7FFFFFFF) % palette.Length]}, #0d0d14)";
+    }
+}

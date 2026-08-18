@@ -1,0 +1,161 @@
+/* /feed/sources — follow/unfollow channels and searches, mute, and manage the listing cache.
+   Aurora/Midnight tokens throughout; the row and card shapes mirror the app's other list pages. */
+
+.fs-page { padding-bottom: 8px; }
+
+/* ---------- header ---------- */
+.fs-head { display: flex; align-items: center; gap: 11px; margin-bottom: 16px; }
+.fs-headline { min-width: 0; }
+.fs-eyebrow {
+    display: block;
+    font-size: 10px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent-ink);
+}
+.fs-title { margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.025em; color: var(--text); }
+
+/* ---------- add box ---------- */
+.fs-add { display: flex; gap: 8px; margin-bottom: 8px; }
+.fs-add__in {
+    flex: 1; min-width: 0;
+    height: 44px; padding: 0 14px;
+    border-radius: 13px;
+    background: var(--field-bg);
+    border: 1px solid var(--border);
+    color: var(--text); font: inherit; font-size: 14px;
+    -webkit-tap-highlight-color: transparent;
+}
+.fs-add__in:focus { outline: none; border-color: var(--accent-line); }
+.fs-add__in:disabled { opacity: 0.6; }
+.fs-add__go {
+    flex: none; min-width: 66px; height: 44px; padding: 0 18px;
+    border-radius: 13px; border: 0; cursor: pointer;
+    background: var(--grad); color: #04261c;
+    font: inherit; font-size: 14px; font-weight: 800;
+    box-shadow: 0 10px 22px -12px var(--grad-shadow);
+    -webkit-tap-highlight-color: transparent;
+}
+.fs-add__go:disabled { opacity: 0.5; box-shadow: none; }
+
+/* ---------- hint ---------- */
+.fs-hint { font-size: 11px; line-height: 1.6; color: var(--text-muted); margin: 2px 2px 14px; }
+.fs-hint code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 10.5px;
+    padding: 1px 5px; border-radius: 6px;
+    background: var(--surface-3); color: var(--text);
+}
+.fs-hint b { color: var(--accent-ink); font-weight: 800; }
+
+/* ---------- add-result toast ---------- */
+.fs-toast {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 13px; margin-bottom: 14px;
+    border-radius: 13px;
+    font-size: 12.5px; font-weight: 700;
+    border: 1px solid var(--border);
+}
+.fs-toast svg { width: 17px; height: 17px; flex: none; }
+.fs-toast.is-ok   { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+.fs-toast.is-info { background: var(--blue-soft);   border-color: var(--border);      color: var(--blue-ink); }
+.fs-toast.is-bad  { background: var(--rose-soft);   border-color: var(--rose);         color: var(--rose-ink); }
+
+/* ---------- section kicker ---------- */
+.fs-kicker {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 20px 4px 8px;
+}
+.fs-kicker__t {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--text-faint);
+}
+
+.fs-none {
+    padding: 16px; border-radius: var(--radius);
+    background: var(--surface-2); border: 1px dashed var(--border-strong);
+    font-size: 12px; color: var(--text-muted); text-align: center;
+}
+
+/* ---------- list card ---------- */
+.fs-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.fs-row {
+    display: flex; align-items: center; gap: 11px;
+    padding: 11px 13px;
+    border-top: 1px solid var(--border);
+}
+.fs-row:first-child { border-top: 0; }
+.fs-row.is-off { opacity: 0.55; }
+
+.fs-row__av {
+    flex: none; width: 38px; height: 38px; border-radius: 50%;
+    display: grid; place-items: center;
+    color: #fff; font-weight: 800; font-size: 15px;
+    overflow: hidden;
+}
+.fs-row__av--q { background: linear-gradient(150deg, #6366f1, #0b1020); color: #fff; }
+.fs-row__av--q svg { width: 18px; height: 18px; }
+
+.fs-row__t { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; text-align: left; }
+.fs-row__n {
+    font-size: 13.5px; font-weight: 700; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.fs-row__s {
+    font-size: 10.5px; font-weight: 600; color: var(--text-faint);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ---------- mute switch ---------- */
+.fs-sw {
+    flex: none; position: relative;
+    width: 40px; height: 24px; border-radius: 999px;
+    background: var(--track); border: 1px solid var(--border);
+    cursor: pointer; padding: 0;
+    transition: background 160ms ease, border-color 160ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+.fs-sw__knob {
+    position: absolute; top: 2px; left: 2px;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.fs-sw.is-on { background: var(--accent); border-color: var(--accent); }
+.fs-sw.is-on .fs-sw__knob { transform: translateX(16px); }
+
+/* ---------- remove ---------- */
+.fs-x {
+    flex: none; width: 30px; height: 30px; border-radius: 9px;
+    display: grid; place-items: center;
+    background: transparent; border: 0; cursor: pointer;
+    color: var(--text-faint);
+    -webkit-tap-highlight-color: transparent;
+    transition: color 140ms ease, background 140ms ease;
+}
+.fs-x svg { width: 15px; height: 15px; }
+.fs-x:hover, .fs-x:active { color: var(--rose-ink); background: var(--rose-soft); }
+
+/* ---------- inline button (refresh / unhide) ---------- */
+.fs-btn {
+    flex: none; padding: 8px 14px; border-radius: 10px; cursor: pointer;
+    background: var(--surface-3); border: 1px solid var(--border);
+    color: var(--text); font: inherit; font-size: 12px; font-weight: 800;
+    -webkit-tap-highlight-color: transparent;
+}
+.fs-btn:disabled { opacity: 0.6; }
+
+/* ---------- footer note ---------- */
+.fs-foot {
+    margin: 16px 4px 0;
+    font-size: 10.5px; line-height: 1.6; color: var(--text-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fs-sw, .fs-sw__knob, .fs-x { transition: none; }
+}

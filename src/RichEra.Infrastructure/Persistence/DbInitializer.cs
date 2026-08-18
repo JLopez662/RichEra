@@ -18,6 +18,33 @@ public static class DbInitializer
         {
             await BackfillCategoryBucketsAsync(db, ct);
         }
+
+        await SeedWelcomeNotificationAsync(db, ct);
+    }
+
+    // A single welcome entry the first time the Notification Center exists, so it isn't empty
+    // before the daily reminder starts firing. Guarded by a Settings flag so it seeds exactly
+    // once — it never comes back after being read, dismissed, or pruned.
+    private const string WelcomeSeededKey = "notif.welcomeSeeded";
+
+    private static async Task SeedWelcomeNotificationAsync(AppDbContext db, CancellationToken ct)
+    {
+        if (await db.Settings.AnyAsync(s => s.Key == WelcomeSeededKey, ct)) return;
+
+        var now = DateTime.UtcNow;
+        db.NotificationLogEntries.Add(new NotificationLogEntry
+        {
+            Kind = NotificationKind.System,
+            Title = "Notifications are on",
+            Body = "This is your Notification Center. Your daily reminder to log spending will "
+                 + "show up here — and on your phone.",
+            FireTimeUtc = now,
+            IsRead = false,
+            DedupeKey = $"{(byte)NotificationKind.System}|welcome",
+            CreatedUtc = now,
+        });
+        db.Settings.Add(new Setting { Key = WelcomeSeededKey, Value = now.ToString("O") });
+        await db.SaveChangesAsync(ct);
     }
 
     // Databases created before macro buckets existed have all-null category buckets. Fill in

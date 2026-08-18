@@ -1,0 +1,315 @@
+@page "/feed/sources"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@inject IFeedSourceService Sources
+@inject IShortsFeedService Shorts
+@inject NavigationManager Nav
+
+<div class="container-fluid py-3 fs-page">
+
+    <div class="fs-head">
+        <button class="app-icon-btn" type="button" title="Back" aria-label="Back" @onclick="GoBack">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="fs-headline">
+            <span class="fs-eyebrow">MONEY FEED</span>
+            <h1 class="fs-title">Sources</h1>
+        </div>
+    </div>
+
+    <div class="fs-add">
+        @* @@ is a literal '@' in Razor — a bare @handle would be read as an expression. *@
+        <input class="fs-add__in" placeholder="@@handle, channel link, or a search"
+               @bind="input" @bind:event="oninput" @onkeydown="OnKeyDownAsync" disabled="@adding" />
+        <button class="fs-add__go" type="button" disabled="@(adding || string.IsNullOrWhiteSpace(input))"
+                @onclick="AddAsync">
+            @(adding ? "…" : "Add")
+        </button>
+    </div>
+
+    <div class="fs-hint">
+        Understands <code>@("@handle")</code> · <code>youtube.com/@("@…")</code> · <code>/channel/UC…</code> ·
+        <code>youtu.be/…</code> · <code>/shorts/…</code>. Anything that isn't a link is saved as a <b>search</b>.
+    </div>
+
+    @if (result is { } r)
+    {
+        <div class="fs-toast @ToastClass(r.Outcome)">
+            @((MarkupString)ToastIcon(r.Outcome))
+            <span>@ToastText(r)</span>
+        </div>
+    }
+
+    <div class="fs-kicker">
+        <span class="fs-kicker__t">Channels · @CountLabel(channels.Count, channels.Count(c => c.Enabled))</span>
+    </div>
+    @if (channels.Count == 0)
+    {
+        <div class="fs-none">No channels followed. Paste a handle or a link above.</div>
+    }
+    else
+    {
+        <div class="fs-card">
+            @foreach (var channel in channels)
+            {
+                <div class="fs-row @(channel.Enabled ? null : "is-off")" @key="channel.ChannelId">
+                    <span class="fs-row__av" style="background:@GradientFor(channel.Handle, channel.Title)">
+                        @Initial(channel.Title)
+                    </span>
+                    <span class="fs-row__t">
+                        <span class="fs-row__n">@channel.Title</span>
+                        <span class="fs-row__s">
+                            @ChannelSub(channel) · @(channel.IsSeed ? "seed" : "yours")@(channel.Enabled ? "" : " · muted")
+                        </span>
+                    </span>
+                    <button class="fs-sw @(channel.Enabled ? "is-on" : null)"
+                            type="button" role="switch" aria-checked="@(channel.Enabled ? "true" : "false")"
+                            aria-label="@($"{(channel.Enabled ? "Mute" : "Unmute")} {channel.Title}")"
+                            @onclick="() => ToggleChannelAsync(channel)">
+                        <span class="fs-sw__knob"></span>
+                    </button>
+                    <button class="fs-x" type="button" aria-label="@($"Unfollow {channel.Title}")"
+                            @onclick="() => RemoveChannelAsync(channel)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="fs-kicker">
+        <span class="fs-kicker__t">Searches · @CountLabel(searches.Count, searches.Count(s => s.Enabled))</span>
+    </div>
+    @if (searches.Count == 0)
+    {
+        <div class="fs-none">No saved searches. Type a topic above — "budgeting tips", "index funds".</div>
+    }
+    else
+    {
+        <div class="fs-card">
+            @foreach (var search in searches)
+            {
+                <div class="fs-row @(search.Enabled ? null : "is-off")" @key="search.Key">
+                    <span class="fs-row__av fs-row__av--q">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.6" y2="16.6"/></svg>
+                    </span>
+                    <span class="fs-row__t">
+                        <span class="fs-row__n">@search.Query</span>
+                        <span class="fs-row__s">
+                            @(search.IsSeed ? "seed" : "yours") · @(search.Enabled ? "refreshed every 6h" : "muted")
+                        </span>
+                    </span>
+                    <button class="fs-sw @(search.Enabled ? "is-on" : null)"
+                            type="button" role="switch" aria-checked="@(search.Enabled ? "true" : "false")"
+                            aria-label="@($"{(search.Enabled ? "Mute" : "Unmute")} {search.Query}")"
+                            @onclick="() => ToggleSearchAsync(search)">
+                        <span class="fs-sw__knob"></span>
+                    </button>
+                    <button class="fs-x" type="button" aria-label="@($"Remove {search.Query}")"
+                            @onclick="() => RemoveSearchAsync(search)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="fs-kicker"><span class="fs-kicker__t">Cache &amp; marks</span></div>
+    <div class="fs-card">
+        <div class="fs-row">
+            <span class="fs-row__t">
+                <span class="fs-row__n">Refresh all listings</span>
+                <span class="fs-row__s">Channels every 12h · searches every 6h · @CacheLabel on disk</span>
+            </span>
+            <button class="fs-btn" type="button" disabled="@refreshing" @onclick="RefreshAsync">
+                @(refreshing ? "Refreshing…" : "Refresh")
+            </button>
+        </div>
+        <div class="fs-row">
+            <span class="fs-row__t">
+                <span class="fs-row__n">Hidden shorts</span>
+                <span class="fs-row__s">
+                    @(hiddenCount == 0
+                        ? "Nothing hidden. Tap the hide button on a short to banish it."
+                        : $"{hiddenCount} short{(hiddenCount == 1 ? "" : "s")} kept out of the feed.")
+                </span>
+            </span>
+            @if (hiddenCount > 0)
+            {
+                <button class="fs-btn" type="button" @onclick="ClearHiddenAsync">Unhide all</button>
+            }
+        </div>
+    </div>
+
+    <div class="fs-foot">
+        Listings are read from YouTube's public pages — no account, no API key, no cost. Nothing is
+        uploaded, and the cache lives in this app's storage only.
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<FollowedChannel> channels = Array.Empty<FollowedChannel>();
+    private IReadOnlyList<SavedSearch> searches = Array.Empty<SavedSearch>();
+
+    private string input = "";
+    private bool adding;
+    private bool refreshing;
+    private int hiddenCount;
+    private long cacheBytes;
+
+    private SourceAddResult? result;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        channels = await Sources.GetChannelsAsync();
+        searches = await Sources.GetSearchesAsync();
+        hiddenCount = (await Sources.GetHiddenAsync()).Count;
+        cacheBytes = Shorts.CacheBytes();
+    }
+
+    private async Task OnKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or "NumpadEnter") await AddAsync();
+    }
+
+    private async Task AddAsync()
+    {
+        if (adding || string.IsNullOrWhiteSpace(input)) return;
+
+        adding = true;
+        result = null;
+        StateHasChanged();
+
+        try
+        {
+            result = await Sources.AddAsync(input);
+            if (result.Outcome == SourceAddOutcome.Added)
+            {
+                input = "";
+                await LoadAsync();
+            }
+        }
+        catch (Exception)
+        {
+            // AddAsync already turns the expected network faults into Unreachable; anything else
+            // is still not worth a crash dialog on a page whose whole job is editing a list.
+            result = new SourceAddResult(SourceAddOutcome.Unreachable);
+        }
+        finally
+        {
+            adding = false;
+        }
+    }
+
+    private async Task ToggleChannelAsync(FollowedChannel channel)
+    {
+        await Sources.SetChannelEnabledAsync(channel.ChannelId, !channel.Enabled);
+        channels = await Sources.GetChannelsAsync();
+    }
+
+    private async Task ToggleSearchAsync(SavedSearch search)
+    {
+        await Sources.SetSearchEnabledAsync(search.Query, !search.Enabled);
+        searches = await Sources.GetSearchesAsync();
+    }
+
+    private async Task RemoveChannelAsync(FollowedChannel channel)
+    {
+        await Sources.RemoveChannelAsync(channel.ChannelId);
+        result = null;
+        await LoadAsync();
+    }
+
+    private async Task RemoveSearchAsync(SavedSearch search)
+    {
+        await Sources.RemoveSearchAsync(search.Query);
+        result = null;
+        await LoadAsync();
+    }
+
+    private async Task RefreshAsync()
+    {
+        refreshing = true;
+        StateHasChanged();
+        try { await Shorts.RefreshAllAsync(); }
+        catch (Exception) { /* offline — the old cache is gone but the next draw retries */ }
+        finally
+        {
+            refreshing = false;
+            cacheBytes = Shorts.CacheBytes();
+        }
+    }
+
+    private async Task ClearHiddenAsync()
+    {
+        await Sources.ClearHiddenAsync();
+        hiddenCount = 0;
+    }
+
+    private void GoBack() => Nav.NavigateTo("/feed");
+
+    // ----------------------------------------------------------------
+
+    /// <summary>"4" when they're all on, "2 of 4 on" when some are muted — the muted case is
+    /// the only one worth spending the extra words on.</summary>
+    private static string CountLabel(int total, int enabled) =>
+        total == enabled ? total.ToString() : $"{enabled} of {total} on";
+
+    private static string ChannelSub(FollowedChannel channel) =>
+        string.IsNullOrWhiteSpace(channel.Handle) ? channel.ChannelId : "@" + channel.Handle;
+
+    private string CacheLabel => cacheBytes switch
+    {
+        <= 0 => "nothing cached yet",
+        < 1024 => $"{cacheBytes} B",
+        < 1024 * 1024 => $"{cacheBytes / 1024.0:0.#} KB",
+        _ => $"{cacheBytes / (1024.0 * 1024.0):0.#} MB",
+    };
+
+    private static string ToastClass(SourceAddOutcome outcome) => outcome switch
+    {
+        SourceAddOutcome.Added => "is-ok",
+        SourceAddOutcome.Duplicate => "is-info",
+        _ => "is-bad",
+    };
+
+    private static string ToastText(SourceAddResult r) => r.Outcome switch
+    {
+        SourceAddOutcome.Added when r.ChannelTitle is { } t => $"Following {t}",
+        SourceAddOutcome.Added => $"Saved the search “{r.Query}”",
+        SourceAddOutcome.Duplicate when r.ChannelTitle is { } t => $"Already following {t}",
+        SourceAddOutcome.Duplicate => $"“{r.Query}” is already saved",
+        SourceAddOutcome.NotFound => "No channel by that name",
+        SourceAddOutcome.Unreachable => "Couldn't reach YouTube — try again",
+        _ => "Type a handle, a link, or a search",
+    };
+
+    private static string ToastIcon(SourceAddOutcome outcome) => outcome switch
+    {
+        SourceAddOutcome.Added =>
+            """<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>""",
+        SourceAddOutcome.Duplicate =>
+            """<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>""",
+        SourceAddOutcome.Unreachable =>
+            """<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="1" y1="1" x2="23" y2="23"/><path d="M16.7 11.7A6 6 0 0 0 12 10"/><path d="M5 12.6a10 10 0 0 1 4-2.4"/><path d="M10.7 5.1a14 14 0 0 1 10.5 4"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>""",
+        _ =>
+            """<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>""",
+    };
+
+    private static string Initial(string title) =>
+        string.IsNullOrWhiteSpace(title) ? "?" : title.Trim()[..1].ToUpperInvariant();
+
+    /// <summary>Same hash as the feed's bubbles and ShortPost's avatars, so a channel keeps one
+    /// colour everywhere it appears.</summary>
+    private static string GradientFor(string handle, string title)
+    {
+        var palette = new[] { "#ff3040", "#f59e0b", "#10b981", "#6366f1", "#06b6d4", "#d946ef" };
+        var key = string.IsNullOrWhiteSpace(handle) ? title : handle;
+        var hash = 0;
+        foreach (var ch in key) hash = unchecked(hash * 31 + ch);
+        // Masked rather than Math.Abs: int.MinValue has no positive counterpart and would throw.
+        return $"linear-gradient(150deg, {palette[(hash & 0x7FFFFFFF) % palette.Length]}, #0d0d14)";
+    }
+}

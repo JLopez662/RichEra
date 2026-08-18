@@ -16,6 +16,7 @@
 <div class="pg-head">
     <div class="wordmark">Rich <b>Era</b></div>
     <div class="head-actions">
+        <NotificationBell />
         <ThemeToggle />
     </div>
 </div>
@@ -34,7 +35,7 @@ else
                 <Icon Name="pencil" Size="15" />
             </button>
         }
-        <div class="hero-label">Total balance</div>
+        <div class="hero-label">Current balance</div>
         <div class="hero-balance">@_summary.TotalAccountBalance.ToString("C")</div>
         <div class="hero-sub">
             <Icon Name="@(_summary.Net >= 0 ? "arrow-up" : "arrow-down")" />

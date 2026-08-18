@@ -1,0 +1,200 @@
+@page "/notifications"
+@using RichEra.Application.Abstractions
+@using RichEra.Application.Dtos
+@using RichEra.Domain.Entities
+@inject INotificationCenter Center
+@inject NavigationManager Nav
+
+<PageTitle>Notifications</PageTitle>
+
+<div class="pg-head">
+    <button class="back-chip" type="button" @onclick='() => Nav.NavigateTo("/")'>
+        <Icon Name="chevron-left" Size="15" /> Back
+    </button>
+    <h1 class="pg-title nc-title">Notifications</h1>
+    @if (UnreadCount > 0)
+    {
+        <button class="nc-markall" type="button" @onclick="MarkAllRead">Mark all read</button>
+    }
+    else
+    {
+        <span class="nc-head-spacer"></span>
+    }
+</div>
+
+@if (_loading)
+{
+    <p class="loading"><em>Loading…</em></p>
+}
+else if (_items.Count == 0)
+{
+    <div class="nc-empty">
+        <span class="nc-empty__orb"><Icon Name="bell" Size="30" /></span>
+        <h3>You're all caught up</h3>
+        <p>New reminders and alerts will show up here — and on your phone.</p>
+    </div>
+}
+else
+{
+    <div class="nc-page">
+        <div class="nc-summary"><b>@UnreadCount unread</b> · @_items.Count in the last 30 days</div>
+
+        @if (_kinds.Count > 1)
+        {
+            <div class="nc-chips">
+                <button class="nc-chip nc-src--daily @(_filter is null ? "is-on" : "")"
+                        type="button" @onclick="() => SetFilter(null)">
+                    All <span class="c">@_items.Count</span>
+                </button>
+                @foreach (var k in _kinds)
+                {
+                    <button class="nc-chip nc-src--@KindSlug(k) @(_filter == k ? "is-on" : "")"
+                            type="button" @onclick="() => SetFilter(k)">
+                        @KindLabel(k) <span class="c">@_items.Count(i => i.Kind == k)</span>
+                    </button>
+                }
+            </div>
+        }
+
+        @foreach (var group in Groups())
+        {
+            <div class="nc-day">@group.Label</div>
+            @foreach (var it in group.Items)
+            {
+                <div class="nc-item nc-src--@KindSlug(it.Kind) @(it.IsRead ? "read" : "unread")"
+                     @onclick="() => OnRowClick(it)">
+                    <span class="nc-ic"><Icon Name="@KindIcon(it.Kind)" Size="18" /></span>
+                    <div class="nc-body">
+                        <div class="nc-kick">
+                            @KindLabel(it.Kind) <span class="dot"></span> <span class="time">@LocalTime(it)</span>
+                        </div>
+                        <div class="nc-t">@it.Title</div>
+                        @if (!string.IsNullOrWhiteSpace(it.Body))
+                        {
+                            <div class="nc-x">@it.Body</div>
+                        }
+                        @if (!it.IsRead && it.Kind == NotificationKind.DailyLogReminder)
+                        {
+                            <button class="nc-cta" type="button"
+                                    @onclick="() => LogNow(it)" @onclick:stopPropagation="true">
+                                <Icon Name="plus" Size="13" /> Log now
+                            </button>
+                        }
+                    </div>
+                    @if (!it.IsRead)
+                    {
+                        <span class="nc-dot"></span>
+                    }
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private List<NotificationItemDto> _items = new();
+    private List<NotificationKind> _kinds = new();
+    private NotificationKind? _filter;
+
+    private int UnreadCount => _items.Count(i => !i.IsRead);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try { _items = (await Center.GetDeliveredAsync()).ToList(); }
+        catch { _items = new(); }
+        _kinds = _items.Select(i => i.Kind).Distinct().OrderBy(k => (byte)k).ToList();
+        if (_filter is { } f && !_kinds.Contains(f)) _filter = null;
+        _loading = false;
+    }
+
+    private void SetFilter(NotificationKind? k) => _filter = k;
+
+    private async Task OnRowClick(NotificationItemDto it)
+    {
+        if (!it.IsRead) await MarkRead(it);
+    }
+
+    private async Task MarkRead(NotificationItemDto it)
+    {
+        try { await Center.MarkReadAsync(it.Id); } catch { /* keep UI responsive */ }
+        var idx = _items.FindIndex(x => x.Id == it.Id);
+        if (idx >= 0) _items[idx] = it with { IsRead = true };
+    }
+
+    private async Task MarkAllRead()
+    {
+        try { await Center.MarkAllReadAsync(); } catch { /* keep UI responsive */ }
+        _items = _items.Select(i => i with { IsRead = true }).ToList();
+    }
+
+    private async Task LogNow(NotificationItemDto it)
+    {
+        await MarkRead(it);
+        Nav.NavigateTo("transactions");
+    }
+
+    private IEnumerable<NotificationItemDto> Filtered =>
+        _filter is { } f ? _items.Where(i => i.Kind == f) : _items;
+
+    // Group by local calendar day, newest day first; items already come newest-first.
+    private IEnumerable<DayGroup> Groups()
+    {
+        var today = DateTime.Now.Date;
+        return Filtered
+            .GroupBy(i => i.FireTimeUtc.ToLocalTime().Date)
+            .OrderByDescending(g => g.Key)
+            .Select(g => new DayGroup(
+                DayLabel(g.Key, today),
+                g.OrderByDescending(i => i.FireTimeUtc).ToList()));
+    }
+
+    private static string DayLabel(DateTime day, DateTime today) => (today - day).Days switch
+    {
+        0 => "Today",
+        1 => "Yesterday",
+        _ => day.ToString("ddd, MMM d"),
+    };
+
+    private static string LocalTime(NotificationItemDto it) =>
+        it.FireTimeUtc.ToLocalTime().ToString("h:mm tt");
+
+    // Maps a kind to its CSS palette slug (see Notifications.razor.css). Null → the "All" chip.
+    private static string KindSlug(NotificationKind? k) => k switch
+    {
+        NotificationKind.DailyLogReminder => "daily",
+        NotificationKind.BillDue => "bills",
+        NotificationKind.BudgetAlert => "budget",
+        NotificationKind.SavingsMilestone => "save",
+        NotificationKind.WeighInReminder => "weigh",
+        NotificationKind.System => "system",
+        _ => "daily",
+    };
+
+    private static string KindLabel(NotificationKind k) => k switch
+    {
+        NotificationKind.DailyLogReminder => "Daily reminder",
+        NotificationKind.BillDue => "Bill due",
+        NotificationKind.BudgetAlert => "Budget alert",
+        NotificationKind.SavingsMilestone => "Savings",
+        NotificationKind.WeighInReminder => "Weigh-in",
+        NotificationKind.System => "Rich Era",
+        _ => "Notification",
+    };
+
+    private static string KindIcon(NotificationKind k) => k switch
+    {
+        NotificationKind.DailyLogReminder => "pencil",
+        NotificationKind.BillDue => "credit-card",
+        NotificationKind.BudgetAlert => "alert-triangle",
+        NotificationKind.SavingsMilestone => "piggy-bank",
+        NotificationKind.WeighInReminder => "trending-up",
+        NotificationKind.System => "bell",
+        _ => "bell",
+    };
+
+    private record DayGroup(string Label, List<NotificationItemDto> Items);
+}

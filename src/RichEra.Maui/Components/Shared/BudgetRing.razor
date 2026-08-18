@@ -7,7 +7,7 @@
 @using RichEra.Application.Dtos
 
 <div class="bring" style="width:@(Size)px;height:@(Size)px" role="img"
-     aria-label="@($"{_bigLabel} {_smlLabel}")">
+     aria-label="@($"{BigText} {SmlText}")">
     <svg viewBox="0 0 160 160" aria-hidden="true">
         <defs>
             <linearGradient id="@_gid" x1="0" y1="0" x2="1" y2="1">
@@ -29,15 +29,73 @@
                     stroke-dasharray="@Dash(_redLen)" stroke-dashoffset="@Inv(-_greenLen)" />
         }
     </svg>
-    <div class="center">
-        <div class="big @(_over ? "neg" : "")" style="font-size:@(Inv(Size * 0.175))px">@_bigLabel</div>
-        <div class="sml" style="font-size:@(Inv(Size * 0.078))px">@_smlLabel</div>
+    <div class="center @(Clickable ? "editable" : "")"
+         @onclick="HandleCenterClick"
+         role="@(Clickable ? "button" : null)"
+         title="@(Clickable ? "Edit balance" : null)"
+         aria-label="@(Clickable ? "Edit balance" : null)">
+        <div class="big @(NegActive ? "neg" : "")" style="font-size:@(Inv(BigFontPx))px">@BigText</div>
+        <div class="sml" style="font-size:@(Inv(Size * 0.078))px">@SmlText</div>
+        @if (Clickable)
+        {
+            <span class="edit-hint"><Icon Name="pencil" Size="@PencilSize" /></span>
+        }
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired] public BudgetDto Budget { get; set; } = default!;
     [Parameter] public int Size { get; set; } = 148;
+
+    // Optional center overrides. When CenterBig is set the ring shows it (e.g. the account
+    // balance on the Log page) instead of the computed budget-remaining; the arc still tracks
+    // spend-vs-budget. OnCenterClick makes the center tappable (opens the balance editor).
+    [Parameter] public string? CenterBig { get; set; }
+    [Parameter] public string? CenterSub { get; set; }
+    [Parameter] public bool CenterNegative { get; set; }
+    [Parameter] public EventCallback OnCenterClick { get; set; }
+
+    private string BigText => CenterBig ?? _bigLabel;
+    private string SmlText => CenterSub ?? _smlLabel;
+    private bool NegActive => CenterBig is not null ? CenterNegative : _over;
+    private bool Clickable => OnCenterClick.HasDelegate;
+    private int PencilSize => Math.Max(11, (int)Math.Round(Size * 0.085));
+
+    // Big-amount font size, shrunk to fit inside the ring. The baseline (0.175·Size) is tuned for a
+    // short no-cents amount like "$1,303"; longer strings — cents ("$1,303.45"), a minus sign, or big
+    // balances — would overrun the circle at that size, so we cap the size to keep the estimated glyph
+    // run within the ring's inner width. Short amounts keep the baseline (fit ≥ baseline → min is baseline).
+    private double BigFontPx
+    {
+        get
+        {
+            var baseline = Size * 0.175;
+            var avail = Size * 0.70;               // inner width, just inside the 14% .center padding
+            var em = EstEm(BigText);
+            var fit = em > 0 ? avail / em : baseline;
+            return Math.Min(baseline, fit);
+        }
+    }
+
+    // Rough advance width of the big text in em units for a bold, tabular-nums numeric string.
+    // Weights are deliberately a touch generous so the real rendered width stays under the estimate.
+    private static double EstEm(string s)
+    {
+        double w = 0;
+        foreach (var ch in s)
+            w += ch switch
+            {
+                ',' or '.' => 0.30,
+                '-' or '−' or ' ' => 0.42,
+                _ => 0.62,                          // digits and currency symbols
+            };
+        return w;
+    }
+
+    private async Task HandleCenterClick()
+    {
+        if (Clickable) await OnCenterClick.InvokeAsync();
+    }
 
     private static readonly double C = 2 * Math.PI * 66;
     private readonly string _gid = $"bring-{Guid.NewGuid():N}";

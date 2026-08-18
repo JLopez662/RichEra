@@ -1,0 +1,111 @@
+/* Notification Center — colour-coded by kind, day-grouped, unread glow.
+   Ports the mockup's .nc-* system onto the app's real Aurora/Midnight tokens. */
+
+.nc-title { font-size: 20px; }
+.nc-markall {
+    font-size: 12px; font-weight: 750; color: var(--accent-ink);
+    background: none; border: none; padding: 6px 4px; cursor: pointer;
+}
+.nc-head-spacer { width: 34px; flex: 0 0 auto; }
+
+.nc-summary { font-size: 12px; font-weight: 600; color: var(--text-muted); margin: 0 4px 12px; }
+.nc-summary b { color: var(--text); font-weight: 800; }
+
+/* Per-kind palette: each remaps a neutral --sc family (colour / soft bg / border line),
+   so a row, chip, icon tile and dot all read one variable set. Values reference the theme
+   tokens, so light/dark switch automatically. */
+.nc-page {
+    --sc-daily: var(--accent-ink);  --sc-daily-soft: var(--accent-soft);  --sc-daily-line: var(--accent-line);
+    --sc-bills: var(--amber-ink);   --sc-bills-soft: var(--amber-soft);   --sc-bills-line: rgba(245, 158, 11, .32);
+    --sc-budget: var(--rose-ink);   --sc-budget-soft: var(--rose-soft);   --sc-budget-line: rgba(239, 68, 68, .32);
+    --sc-save: var(--violet-ink);   --sc-save-soft: var(--violet-soft);   --sc-save-line: rgba(139, 92, 246, .32);
+    --sc-weigh: var(--blue-ink);    --sc-weigh-soft: var(--blue-soft);    --sc-weigh-line: rgba(56, 189, 248, .32);
+    --sc-system: var(--slate-ink);  --sc-system-soft: var(--slate-soft);  --sc-system-line: rgba(100, 116, 139, .3);
+}
+.nc-src--daily  { --sc: var(--sc-daily);  --sc-soft: var(--sc-daily-soft);  --sc-line: var(--sc-daily-line); }
+.nc-src--bills  { --sc: var(--sc-bills);  --sc-soft: var(--sc-bills-soft);  --sc-line: var(--sc-bills-line); }
+.nc-src--budget { --sc: var(--sc-budget); --sc-soft: var(--sc-budget-soft); --sc-line: var(--sc-budget-line); }
+.nc-src--save   { --sc: var(--sc-save);   --sc-soft: var(--sc-save-soft);   --sc-line: var(--sc-save-line); }
+.nc-src--weigh  { --sc: var(--sc-weigh);  --sc-soft: var(--sc-weigh-soft);  --sc-line: var(--sc-weigh-line); }
+.nc-src--system { --sc: var(--sc-system); --sc-soft: var(--sc-system-soft); --sc-line: var(--sc-system-line); }
+
+/* Filter chips */
+.nc-chips {
+    display: flex; gap: 7px; overflow-x: auto; margin: 0 0 14px; padding: 0 2px 3px;
+    -webkit-overflow-scrolling: touch;
+}
+.nc-chip {
+    display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto;
+    padding: 6px 8px 6px 13px; border-radius: 999px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    font-size: 12px; font-weight: 700; color: var(--text-muted); cursor: pointer;
+}
+.nc-chip .c {
+    min-width: 18px; height: 18px; padding: 0 5px; border-radius: 999px;
+    background: var(--surface-3); color: var(--text-faint);
+    font-size: 10.5px; font-weight: 800;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.nc-chip.is-on { background: var(--sc-soft); border-color: var(--sc-line); color: var(--sc); }
+.nc-chip.is-on .c { background: var(--surface-solid); color: var(--sc); }
+
+/* Day-group label with a trailing hairline */
+.nc-day {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10.5px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--text-faint); margin: 16px 4px 9px;
+}
+.nc-day::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+
+/* Item card */
+.nc-item {
+    position: relative; display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 13px; border-radius: 16px; margin-bottom: 9px;
+    background: var(--surface-solid); border: 1px solid var(--border);
+    box-shadow: 0 1px 0 var(--inner-top) inset;
+    overflow: hidden; cursor: pointer;
+}
+.nc-item.unread { background: var(--sc-soft); border-color: var(--sc-line); }
+.nc-item.unread::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--sc); }
+.nc-ic {
+    flex: 0 0 auto; width: 38px; height: 38px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--sc-soft); color: var(--sc);
+}
+.nc-item.read .nc-ic { background: var(--surface-3); color: var(--text-muted); }
+.nc-body { flex: 1; min-width: 0; }
+.nc-kick {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--sc); margin-bottom: 3px;
+}
+.nc-item.read .nc-kick { color: var(--text-faint); }
+.nc-kick .dot { width: 2.5px; height: 2.5px; border-radius: 50%; background: currentColor; opacity: .6; }
+.nc-kick .time { color: var(--text-faint); font-weight: 700; letter-spacing: 0; text-transform: none; }
+.nc-t { font-size: 14px; font-weight: 800; letter-spacing: -.01em; color: var(--text); }
+.nc-item.read .nc-t { color: var(--text-muted); font-weight: 700; }
+.nc-x { font-size: 12px; line-height: 1.45; color: var(--text-muted); margin-top: 2px; }
+.nc-item.read .nc-x { color: var(--text-faint); }
+.nc-dot {
+    flex: 0 0 auto; width: 9px; height: 9px; border-radius: 50%;
+    background: var(--sc); box-shadow: 0 0 0 3px var(--sc-soft); margin-top: 4px;
+}
+.nc-cta {
+    display: inline-flex; align-items: center; gap: 6px; margin-top: 9px;
+    padding: 6px 12px; border-radius: 999px;
+    background: var(--grad); color: #04261c;
+    font-size: 11.5px; font-weight: 800; border: none; cursor: pointer;
+}
+
+/* Empty state */
+.nc-empty {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: 84px 30px 0;
+}
+.nc-empty__orb {
+    width: 74px; height: 74px; border-radius: 50%;
+    background: var(--accent-soft); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center; margin-bottom: 18px;
+}
+.nc-empty h3 { font-size: 17px; font-weight: 800; letter-spacing: -.01em; color: var(--text); }
+.nc-empty p { font-size: 13px; color: var(--text-muted); margin-top: 7px; max-width: 260px; line-height: 1.55; }

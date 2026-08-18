@@ -12,6 +12,7 @@ public record TransactionDto(
     decimal Amount,
     TransactionDirection Direction,
     string? Note,
+    string? Name,
     Guid? TransferGroupId,
     DateTime CreatedUtc,        // when the row was added — shown in the detail view
     string? ExternalId,         // OFX FITID for imported rows (the bank's reference); null otherwise
@@ -32,7 +33,8 @@ public record TransactionUpsertDto(
     string? Note,
     Guid? ItemId = null,      // links the row to a library item (quick-log). Applied on create
                               // only — edits never re-link or unlink; recurrence flows own that.
-    decimal Quantity = 1m);   // servings this row represents; Amount stays the row TOTAL
+    decimal Quantity = 1m,    // servings this row represents; Amount stays the row TOTAL
+    string? Name = null);     // user-given row name; primary display label for manual rows
 
 public record TransferUpsertDto(
     DateOnly Date,

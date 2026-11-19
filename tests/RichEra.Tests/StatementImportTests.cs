@@ -337,7 +337,7 @@ public class StatementImportTests
     [InlineData("Wendy's", "PURCHASE WENDY S PUNTA CANA ON 06/27/26 HIGUEY DO", true)]
     [InlineData("Planet Fitness", "EFT PMT PLANET FITNESS C IClub Fees XXXXXXXXXXX8540", true)]
     [InlineData("Walmart", "PURCHASE WAL-MART 2721 ON 06/28/26 CAYEY", true)]
-    [InlineData("Optima Seguros", "EFT DEPOSIT OPTIMA SEGUROS PAYROLL XXXXXXXXXXX762D", true)]
+    [InlineData("Contoso Systems", "EFT DEPOSIT CONTOSO SYSTEMS PAYROLL XXXXXXXXXXX762D", true)]
     [InlineData("Groceries", "PURCHASE PAYPAL SANTOSONTROVO ON 06/18/26", false)]
     [InlineData("", "PURCHASE WENDY S PUNTA CANA", false)]      // empty note never matches
     [InlineData("PR", "PURCHASE SEGAFREDO ON 06/27/26 HIGUEY PR", false)] // short tokens can't carry a match
